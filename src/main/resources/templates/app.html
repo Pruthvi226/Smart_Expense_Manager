@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Expense Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+</head>
+<body class="app-page" data-page="app">
+<div class="app-shell">
+    <aside class="sidebar" aria-label="Primary navigation">
+        <a class="app-brand" th:href="@{/app}" aria-label="Smart Expense Manager">
+            <span class="brand-mark">SE</span>
+            <span>
+                <strong>Smart Expense</strong>
+                <small>Manager</small>
+            </span>
+        </a>
+
+        <nav class="nav-list">
+            <button class="nav-item active" type="button" data-view="dashboard"><span>D</span>Dashboard</button>
+            <button class="nav-item" type="button" data-view="expenses"><span>E</span>Expenses</button>
+            <button class="nav-item" type="button" data-view="income"><span>I</span>Income</button>
+            <button class="nav-item" type="button" data-view="budgets"><span>B</span>Budgets</button>
+            <button class="nav-item" type="button" data-view="insights"><span>S</span>Smart Insights</button>
+            <button class="nav-item" type="button" data-view="categories"><span>C</span>Categories</button>
+            <button class="nav-item" type="button" data-view="reports"><span>R</span>Reports</button>
+            <button class="nav-item" type="button" data-view="profile"><span>P</span>Profile</button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <p>Signed in as</p>
+            <strong id="sidebarUser">Loading</strong>
+        </div>
+    </aside>
+
+    <div class="workspace">
+        <header class="topbar">
+            <button id="mobileMenuButton" class="icon-button mobile-only" type="button" aria-label="Toggle navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div>
+                <p class="eyebrow" id="viewEyebrow">Overview</p>
+                <h1 id="viewTitle">Dashboard</h1>
+            </div>
+            <div class="topbar-actions">
+                <button id="themeToggleButton" class="icon-button theme-toggle" type="button" aria-label="Toggle theme">
+                    <svg class="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+                    <svg class="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
+                </button>
+                <span id="userPill" class="user-pill">User</span>
+                <button id="logoutButton" class="secondary-button" type="button">Logout</button>
+            </div>
+        </header>
+
+        <main class="content">
+            <div id="toast" class="toast" hidden></div>
+
+            <section class="view active" id="view-dashboard" aria-labelledby="dashboardHeading">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Money snapshot</p>
+                        <h2 id="dashboardHeading">Dashboard</h2>
+                    </div>
+                    <div class="button-row">
+                        <button class="secondary-button" type="button" data-jump="expenses">Add expense</button>
+                        <button class="secondary-button" type="button" data-jump="income">Add income</button>
+                    </div>
+                </div>
+
+                <div class="metric-grid">
+                    <article class="metric-card accent-green">
+                        <span>Total income</span>
+                        <strong id="totalIncome">&#8377;0.00</strong>
+                    </article>
+                    <article class="metric-card accent-red">
+                        <span>Total expenses</span>
+                        <strong id="totalExpense">&#8377;0.00</strong>
+                    </article>
+                    <article class="metric-card accent-blue">
+                        <span>Balance</span>
+                        <strong id="balance">&#8377;0.00</strong>
+                    </article>
+                    <article class="metric-card accent-amber">
+                        <span>This month</span>
+                        <strong id="monthlyExpense">&#8377;0.00</strong>
+                    </article>
+                </div>
+
+                <section class="panel monthly-trend-chart">
+                    <div class="panel-heading">
+                        <h3>Last 6 months trend</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="monthlyTrendChart"></canvas>
+                    </div>
+                </section>
+
+                <div class="dashboard-grid">
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <h3>Spending by category</h3>
+                            <span id="topCategory" class="status-chip">No data</span>
+                        </div>
+                        <div id="categoryBreakdown" class="bar-list"></div>
+                    </section>
+
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <h3>Budget status</h3>
+                            <button class="text-button" type="button" data-jump="budgets">Manage</button>
+                        </div>
+                        <div id="budgetSummaryList" class="budget-summary-list"></div>
+                    </section>
+                </div>
+
+                <section class="panel insight-preview">
+                    <div>
+                        <p class="eyebrow">Novelty feature</p>
+                        <h3>Smart finance coach</h3>
+                        <p id="dashboardInsightText">Your personalized money insights will appear after the dashboard loads.</p>
+                    </div>
+                    <button class="secondary-button" type="button" data-jump="insights">Open insights</button>
+                </section>
+            </section>
+
+            <section class="view" id="view-expenses" aria-labelledby="expensesHeading">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Spending</p>
+                        <h2 id="expensesHeading">Expenses</h2>
+                    </div>
+                </div>
+
+                <div class="two-column">
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <h3>Expense list</h3>
+                            <button id="clearExpenseFilters" class="text-button" type="button">Clear filters</button>
+                        </div>
+                        <div class="filter-grid">
+                            <label>Category
+                                <select id="expenseFilterCategory">
+                                    <option value="">All categories</option>
+                                </select>
+                            </label>
+                            <label>From
+                                <input id="expenseFilterStart" type="date">
+                            </label>
+                            <label>To
+                                <input id="expenseFilterEnd" type="date">
+                            </label>
+                        </div>
+                        <div class="record-count">
+                            <span id="expenseRecordCount">Showing 0 of 0 expenses</span>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Category</th>
+                                    <th>Date</th>
+                                    <th class="amount-cell">Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody id="expenseTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="pagination-controls">
+                            <button id="expensePrevPage" class="secondary-button" type="button">← Previous</button>
+                            <span id="expensePageIndicator" class="page-indicator">Page 1</span>
+                            <button id="expenseNextPage" class="secondary-button" type="button">Next →</button>
+                        </div>
+                    </section>
+
+                    <section class="panel form-panel">
+                        <div class="panel-heading">
+                            <h3 id="expenseFormTitle">Add expense</h3>
+                            <button id="resetExpenseForm" class="text-button" type="button">Reset</button>
+                        </div>
+                        <form id="expenseForm" class="data-form" novalidate>
+                            <input id="expenseId" type="hidden">
+                            <label>Title
+                                <input id="expenseTitle" type="text" required>
+                            </label>
+                            <label>Amount
+                                <div class="input-prefix-wrapper">
+                                    <span class="input-prefix">&#8377;</span>
+                                    <input id="expenseAmount" type="text" data-amount-field="true" required>
+                                </div>
+                            </label>
+                            <label>Category
+                                <input id="expenseCategory" list="expenseCategoryList" type="text" required>
+                                <datalist id="expenseCategoryList"></datalist>
+                            </label>
+                            <label>Date
+                                <input id="expenseDate" type="date" required>
+                            </label>
+                            <label>Description
+                                <textarea id="expenseDescription" rows="4"></textarea>
+                            </label>
+                            <button class="primary-button" type="submit">Save expense</button>
+                        </form>
+                    </section>
+                </div>
+            </section>
+
+            <section class="view" id="view-income" aria-labelledby="incomeHeading">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Cash flow</p>
+                        <h2 id="incomeHeading">Income</h2>
+                    </div>
+                </div>
+
+                <div class="two-column">
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <h3>Income list</h3>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                <tr>
+                                    <th>Source</th>
+                                    <th>Date</th>
+                                    <th class="amount-cell">Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody id="incomeTableBody"></tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="panel form-panel">
+                        <div class="panel-heading">
+                            <h3 id="incomeFormTitle">Add income</h3>
+                            <button id="resetIncomeForm" class="text-button" type="button">Reset</button>
+                        </div>
+                        <form id="incomeForm" class="data-form" novalidate>
+                            <input id="incomeId" type="hidden">
+                            <label>Source
+                                <input id="incomeSource" type="text" required>
+                            </label>
+                            <label>Amount
+                                <div class="input-prefix-wrapper">
+                                    <span class="input-prefix">&#8377;</span>
+                                    <input id="incomeAmount" type="text" data-amount-field="true" required>
+                                </div>
+                            </label>
+                            <label>Category
+                                <select id="incomeCategory">
+                                    <option value="">Select category</option>
+                                </select>
+                            </label>
+                            <label>Date
+                                <input id="incomeDate" type="date" required>
+                            </label>
+                            <button class="primary-button" type="submit">Save income</button>
+                        </form>
+                    </section>
+                </div>
+            </section>
+
+            <section class="view" id="view-budgets" aria-labelledby="budgetsHeading">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Limits</p>
+                        <h2 id="budgetsHeading">Budgets</h2>
+                    </div>
+                </div>
+
+                <div class="two-column">
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <h3>Budget usage</h3>
+                        </div>
+                        <div id="budgetStatusList" class="budget-status-list"></div>
+                    </section>
+
+                    <section class="panel form-panel">
+                        <div class="panel-heading">
+                            <h3 id="budgetFormTitle">Add budget</h3>
+                            <button id="resetBudgetForm" class="text-button" type="button">Reset</button>
+                        </div>
+                        <form id="budgetForm" class="data-form" novalidate>
+                            <input id="budgetId" type="hidden">
+                            <label>Category
+                                <input id="budgetCategory" list="expenseCategoryList" type="text" required>
+                            </label>
+                            <label>Limit amount
+                                <div class="input-prefix-wrapper">
+                                    <span class="input-prefix">&#8377;</span>
+                                    <input id="budgetLimitAmount" type="text" data-amount-field="true" required>
+                                </div>
+                            </label>
+                            <div class="form-row">
+                                <label>Month
+                                    <input id="budgetMonth" type="number" min="1" max="12" required>
+                                </label>
+                                <label>Year
+                                    <input id="budgetYear" type="number" min="2000" required>
+                                </label>
+                            </div>
+                            <button class="primary-button" type="submit">Save budget</button>
+                        </form>
+                    </section>
+                </div>
+            </section>
+
+            <section class="view" id="view-categories" aria-labelledby="categoriesHeading">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Organization</p>
+                        <h2 id="categoriesHeading">Categories</h2>
+                    </div>
+                </div>
+
+                <div class="two-column">
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <h3>Category list</h3>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody id="categoryTableBody"></tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="panel form-panel">
+                        <div class="panel-heading">
+                            <h3 id="categoryFormTitle">Add category</h3>
+                            <button id="resetCategoryForm" class="text-button" type="button">Reset</button>
+                        </div>
+                        <form id="categoryForm" class="data-form" novalidate>
+                            <input id="categoryId" type="hidden">
+                            <label>Name
+                                <input id="categoryName" type="text" required>
+                            </label>
+                            <label>Type
+                                <select id="categoryType" required>
+                                    <option value="EXPENSE">Expense</option>
+                                    <option value="INCOME">Income</option>
+                                </select>
+                            </label>
+                            <button class="primary-button" type="submit">Save category</button>
+                        </form>
+                    </section>
+                </div>
+            </section>
+
+            <section class="view" id="view-insights" aria-labelledby="insightsHeading">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Smart rules</p>
+                        <h2 id="insightsHeading">Smart Insights</h2>
+                    </div>
+                    <button class="secondary-button" type="button" data-jump="budgets">Tune budgets</button>
+                </div>
+
+                <div class="insight-hero">
+                    <section class="panel score-panel">
+                        <div id="healthScoreRing" class="score-ring" aria-label="Financial health score">
+                            <strong id="healthScore">0</strong>
+                            <span>score</span>
+                        </div>
+                        <div>
+                            <p class="eyebrow">Financial health</p>
+                            <h3 id="healthScoreLabel">Analyzing</h3>
+                            <p id="healthScoreText">Smart insights are calculated from your latest income, expenses, and budgets.</p>
+                        </div>
+                    </section>
+
+                    <section class="panel goal-panel">
+                        <div class="panel-heading">
+                            <h3>Savings goal simulator</h3>
+                        </div>
+                        <div class="goal-grid">
+                            <label>Goal amount
+                                <input id="goalAmount" type="number" min="1" step="50" value="1000">
+                            </label>
+                            <label>Monthly contribution
+                                <input id="goalContribution" type="number" min="1" step="25" value="250">
+                            </label>
+                        </div>
+                        <p id="goalResult" class="goal-result">Enter a goal to see the timeline.</p>
+                    </section>
+                </div>
+
+                <div class="metric-grid compact insight-metrics">
+                    <article class="metric-card accent-green">
+                        <span>Monthly savings rate</span>
+                        <strong id="insightSavingsRate">0%</strong>
+                    </article>
+                    <article class="metric-card accent-amber">
+                        <span>Projected month spend</span>
+                        <strong id="insightProjection">&#8377;0.00</strong>
+                    </article>
+                </div>
+
+                <div class="dashboard-grid">
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <h3>Recommended actions</h3>
+                        </div>
+                        <div id="recommendationList" class="recommendation-list"></div>
+                    </section>
+
+                    <section class="panel">
+                        <div class="panel-heading">
+                            <h3>Signals watched</h3>
+                        </div>
+                        <div id="signalList" class="signal-list"></div>
+                    </section>
+                </div>
+            </section>
+
+            <section class="view" id="view-reports" aria-labelledby="reportsHeading">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Monthly view</p>
+                        <h2 id="reportsHeading">Reports</h2>
+                    </div>
+                </div>
+
+                <section class="panel">
+                    <div class="report-controls">
+                        <label>Month
+                            <select id="reportMonth"></select>
+                        </label>
+                        <label>Year
+                            <input id="reportYear" type="number" min="2000">
+                        </label>
+                        <button id="loadReportButton" class="secondary-button" type="button">Load report</button>
+                    </div>
+                    <div class="metric-grid compact">
+                        <article class="metric-card accent-green">
+                            <span>Report income</span>
+                            <strong id="reportIncome">&#8377;0.00</strong>
+                        </article>
+                        <article class="metric-card accent-red">
+                            <span>Report expenses</span>
+                            <strong id="reportExpense">&#8377;0.00</strong>
+                        </article>
+                    </div>
+                    <div id="reportBreakdown" class="bar-list report-bars"></div>
+                </section>
+            </section>
+
+            <section class="view" id="view-profile" aria-labelledby="profileHeading">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Account</p>
+                        <h2 id="profileHeading">Profile</h2>
+                    </div>
+                </div>
+
+                <section class="panel narrow-panel">
+                    <form id="profileForm" class="data-form" novalidate>
+                        <label>Name
+                            <input id="profileName" type="text" required>
+                        </label>
+                        <label>Email
+                            <input id="profileEmail" type="email" required>
+                        </label>
+                        <button class="primary-button" type="submit">Update profile</button>
+                    </form>
+                </section>
+            </section>
+        </main>
+    </div>
+</div>
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>
