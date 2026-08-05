@@ -76,6 +76,9 @@ app:
   openai:
     api-key: ${OPENAI_API_KEY:}
     model: gpt-3.5-turbo
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    model: gemini-2.5-flash
 
 springdoc:
   swagger-ui:

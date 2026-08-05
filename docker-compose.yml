@@ -32,6 +32,8 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - JWT_SECRET=SmartExpenseManagerProductionJwtSecretKeyChangeMeToAnUltraSecureSecret1234567890
       - JWT_EXPIRATION=86400000
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
     depends_on:
       mysql:
         condition: service_healthy
