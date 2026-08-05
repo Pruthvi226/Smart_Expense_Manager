@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for Smart Expense Manager V2
 
-# Stage 1: Build stage with Maven & JDK 21
-FROM maven:3.9.6-eclipse-temurin-21 AS builder
+# Stage 1: Build stage with Maven & JDK 17
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
 WORKDIR /app
 
 # Cache dependencies
@@ -12,8 +12,8 @@ RUN mvn dependency:go-offline -B
 COPY src ./src
 RUN mvn package -DskipTests -B
 
-# Stage 2: Runtime stage with lightweight JRE 21
-FROM eclipse-temurin:21-jre-alpine
+# Stage 2: Runtime stage with lightweight JRE 17
+FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 # Create non-root system user for security
