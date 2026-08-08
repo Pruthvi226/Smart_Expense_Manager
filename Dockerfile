@@ -10,8 +10,7 @@ RUN mvn dependency:go-offline -B
 
 # Copy source code and build executable jar
 COPY src ./src
-RUN mvn package -DskipTests -B \
-  && mv target/smart-expense-manager-*.jar target/app.jar
+RUN mvn package -DskipTests -B
 
 # Stage 2: Runtime stage with lightweight JRE 17
 FROM eclipse-temurin:17-jre-alpine
@@ -22,11 +21,11 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 
 # Copy application jar from builder stage
-COPY --from=builder /app/target/app.jar app.jar
+COPY --from=builder /app/target/smart-expense-manager-2.0.0.jar app.jar
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD wget --quiet --tries=1 --spider "http://localhost:${SERVER_PORT:-${PORT:-8080}}/actuator/health/liveness" || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost:8080/actuator/health || exit 1
 
 ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]

@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   frontend:
     build:
@@ -20,21 +22,16 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
-      - SERVER_PORT=${SERVER_PORT:-8080}
-      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-smart_expense_manager}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true}
-      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-${MYSQL_USER:-root}}
-      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD:-${MYSQL_ROOT_PASSWORD:-rootpassword}}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
-      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env}
-      - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
-      - JWT_REFRESH_EXPIRATION=${JWT_REFRESH_EXPIRATION:-604800000}
-      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
-      - SMTP_PORT=${SMTP_PORT:-587}
-      - EMAIL_USERNAME=${EMAIL_USERNAME:-}
-      - EMAIL_PASSWORD=${EMAIL_PASSWORD:-}
+      - SPRING_PROFILES_ACTIVE=prod
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/smart_expense_manager?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=rootpassword
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - JWT_SECRET=SmartExpenseManagerProductionJwtSecretKeyChangeMeToAnUltraSecureSecret1234567890
+      - JWT_EXPIRATION=86400000
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
     depends_on:
@@ -43,7 +40,7 @@ services:
       redis:
         condition: service_healthy
       kafka:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
     networks:
       - app-network
@@ -52,7 +49,7 @@ services:
     image: mysql:8.0
     container_name: smart-expense-mysql
     ports:
-      - "${MYSQL_PORT:-13306}:3306"
+      - "3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=rootpassword
       - MYSQL_DATABASE=smart_expense_manager
@@ -86,7 +83,6 @@ services:
     container_name: smart-expense-kafka
     ports:
       - "9092:9092"
-      - "29092:29092"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
@@ -102,12 +98,6 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
-    healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:9092 >/dev/null 2>&1"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
     networks:
       - app-network
 
@@ -140,7 +130,7 @@ services:
     ports:
       - "3001:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:?Set GF_SECURITY_ADMIN_PASSWORD in .env}
+      - GF_SECURITY_ADMIN_PASSWORD=admin
     depends_on:
       - prometheus
     networks:
