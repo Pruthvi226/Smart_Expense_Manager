@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext';
 import type { NotificationItem } from '../../types';
+import { useDialog } from '../../lib/useDialog';
 
 interface NotificationDrawerProps {
   isOpen: boolean;
@@ -19,8 +20,10 @@ const typeConfig: Record<NotificationItem['type'], { icon: React.ElementType; co
 };
 
 export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, onClose }) => {
-  const { notifications, unreadCount, markAllAsRead, clearAll } = useNotifications();
+  const { notifications, unreadCount, markAllAsRead, clearAll, loadError, refreshNotifications } = useNotifications();
+  useEffect(() => { if (isOpen) void refreshNotifications(); }, [isOpen, refreshNotifications]);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useDialog(isOpen, onClose);
 
   // Close on Escape key
   useEffect(() => {
@@ -40,7 +43,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
 
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label="Notifications">
+    <div ref={dialogRef} tabIndex={-1} className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label="Notifications">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
@@ -88,13 +91,14 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
               className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-500 hover:text-rose-400 transition-colors"
             >
               <Trash2 size={13} />
-              Clear all
+              Dismiss locally
             </button>
           </div>
         )}
 
         {/* Notification list */}
         <div className="flex-1 overflow-y-auto">
+          {loadError && <p role="alert" className="p-4 text-sm text-amber-300">{loadError} <button onClick={() => { void refreshNotifications(); }} className="underline">Retry</button></p>}
           {notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-16 text-center">
               <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/5 mb-4">
@@ -144,7 +148,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
         {/* Footer */}
         <div className="p-4 border-t border-white/5">
           <p className="text-[11px] text-zinc-600 text-center">
-            Real-time alerts powered by Kafka event streams
+            Latest 50 saved alerts · Updated every minute
           </p>
         </div>
       </div>

@@ -4,7 +4,7 @@ spring:
       on-profile: test
 
   datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MYSQL
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MYSQL;NON_KEYWORDS=MONTH,YEAR
     driver-class-name: org.h2.Driver
     username: sa
     password: 
@@ -14,6 +14,9 @@ spring:
       ddl-auto: create-drop
     database-platform: org.hibernate.dialect.H2Dialect
     show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
 
   flyway:
     enabled: false
@@ -23,11 +26,20 @@ spring:
       repositories:
         enabled: false
 
-  kafka:
-    listener:
-      auto-startup: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
 
 app:
+  mail:
+    enabled: false
   jwtSecret: SmartExpenseManagerTestJwtSecretKeyForTestingPurposesOnlyMustBeAtLeast64BytesLong1234567890
   jwtExpirationMs: 3600000
   jwtRefreshExpirationMs: 86400000
+
+management:
+  health:
+    mail:
+      enabled: false
+    redis:
+      enabled: false

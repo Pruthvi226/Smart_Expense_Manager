@@ -4,6 +4,9 @@ spring:
       on-profile: prod
 
   datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
@@ -16,7 +19,32 @@ spring:
       ddl-auto: validate
     show-sql: false
 
+  kafka:
+    listener:
+      auto-startup: true
+    admin:
+      fail-fast: false
+
+management:
+  endpoint:
+    health:
+      show-details: never
+      group:
+        readiness:
+          include: readinessState,db,redis
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  health:
+    kafka:
+      enabled: true
+
 logging:
   level:
     root: WARN
     com.smartexpensemanager: INFO
+
+app:
+  jwtSecret: ${JWT_SECRET:${APP_JWT_SECRET:}}
+  public-base-url: ${APP_PUBLIC_BASE_URL}

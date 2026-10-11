@@ -7,6 +7,7 @@ import {
   Server, Database, Radio, Mail, Shield, Activity
 } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
+import { isDemoMode } from '../services/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type SupportTab = 'overview' | 'faq' | 'docs' | 'bug' | 'feature' | 'feedback' | 'tickets' | 'status';
@@ -47,7 +48,7 @@ const FAQ_ITEMS: FaqItem[] = [
   { id: '5', category: 'Analytics', question: 'What does the Financial Health Score mean?', answer: 'The Financial Health Score (0–100) is calculated from your savings rate, budget adherence, spending trend, and debt ratios. A score of 89+ indicates excellent financial health. The score is updated in real-time as you add new transactions.' },
   { id: '6', category: 'AI', question: 'How does the AI Copilot work?', answer: 'The AI Copilot uses your actual transaction data to answer natural language queries. Ask questions like "How much did I spend on food?" or "Predict next month\'s expenses." Responses include contextual insights and suggested optimization actions.' },
   { id: '7', category: 'Reports', question: 'How do I export my financial data?', answer: 'Go to Reports → Export. Available formats include CSV (spreadsheet), JSON (machine-readable), and PDF (print-ready report). You can also request a full account archive from the Settings → Data Export section.' },
-  { id: '8', category: 'Security', question: 'How is my data secured?', answer: 'SmartExpense uses JWT-based authentication with automatic token refresh, HTTPS encryption in transit, and bcrypt password hashing. All API endpoints require authentication. Enable 2FA from Settings → Security for additional protection.' },
+  { id: '8', category: 'Security', question: 'How is my data secured?', answer: 'The API uses JWT access tokens with refresh-token rotation, BCrypt password hashing, and account lockout after 5 failed logins. Write endpoints accept an Idempotency-Key header. Authenticator-app 2FA (TOTP) is not implemented.' },
   { id: '9', category: 'Authentication', question: 'I forgot my password. How do I reset it?', answer: 'Click "Forgot Password?" on the login page. Enter your email address and you\'ll receive a secure reset link valid for 15 minutes. For security, the link is single-use and cannot be reused.' },
   { id: '10', category: 'Deployment', question: 'Can I self-host SmartExpense?', answer: 'Yes. SmartExpense V2 supports Docker Compose deployment with MySQL 8, Redis, and the Spring Boot backend. See the Architecture documentation for detailed setup instructions and production configuration.' },
 ];
@@ -58,7 +59,7 @@ const DOCS_SECTIONS = [
   { title: 'Budgets & Alerts', desc: 'Setting limits and threshold notifications', icon: AlertCircle, articles: 8 },
   { title: 'Analytics & Reports', desc: 'Charts, filters, and data exports', icon: Activity, articles: 10 },
   { title: 'AI Copilot', desc: 'Natural language finance queries and predictions', icon: Lightbulb, articles: 5 },
-  { title: 'Settings & Security', desc: '2FA, API keys, sessions, and privacy', icon: Shield, articles: 9 },
+  { title: 'Settings & Security', desc: 'Profile, JWT session, and data export', icon: Shield, articles: 3 },
   { title: 'API Reference', desc: 'REST API endpoints and authentication', icon: Server, articles: 24 },
   { title: 'Deployment Guide', desc: 'Docker, production config, and CI/CD', icon: Database, articles: 7 },
 ];
@@ -66,7 +67,7 @@ const DOCS_SECTIONS = [
 const INITIAL_TICKETS: SupportTicket[] = [
   { id: 'TKT-1042', title: 'Budget alert notification not firing on mobile', status: 'IN_PROGRESS', priority: 'HIGH', created: 'Aug 3, 2026', updated: '2 hours ago', replies: 4 },
   { id: 'TKT-1038', title: 'CSV export missing custom date range filter', status: 'OPEN', priority: 'MEDIUM', created: 'Aug 1, 2026', updated: 'Aug 2, 2026', replies: 1 },
-  { id: 'TKT-1031', title: 'Two-factor authentication setup error', status: 'RESOLVED', priority: 'HIGH', created: 'Jul 28, 2026', updated: 'Jul 30, 2026', replies: 6 },
+  { id: 'TKT-1031', title: 'Refresh token rotation after concurrent requests', status: 'RESOLVED', priority: 'HIGH', created: 'Jul 28, 2026', updated: 'Jul 30, 2026', replies: 6 },
   { id: 'TKT-1019', title: 'AI Copilot streaming delay on slow connections', status: 'CLOSED', priority: 'LOW', created: 'Jul 20, 2026', updated: 'Jul 25, 2026', replies: 2 },
 ];
 
@@ -190,6 +191,7 @@ export const SupportPage: React.FC = () => {
   }, [globalSearch]);
 
   const submitBug = () => {
+    if (!isDemoMode()) { addNotification('Submission unavailable', 'This workspace has no connected support service. Your report has not been sent.', 'WARNING'); return; }
     setBugSubmitting(true);
     setTimeout(() => {
       setBugSubmitting(false);
@@ -199,6 +201,7 @@ export const SupportPage: React.FC = () => {
   };
 
   const submitFeature = () => {
+    if (!isDemoMode()) { addNotification('Submission unavailable', 'This workspace has no connected support service. Your request has not been sent.', 'WARNING'); return; }
     setFeatSubmitting(true);
     setTimeout(() => {
       setFeatSubmitting(false);
@@ -208,6 +211,7 @@ export const SupportPage: React.FC = () => {
   };
 
   const submitFeedback = () => {
+    if (!isDemoMode()) { addNotification('Submission unavailable', 'This workspace has no connected feedback service. Your feedback has not been sent.', 'WARNING'); return; }
     if (!feedbackRating) return;
     setFeedbackSubmitted(true);
     addNotification('Thank You!', `Your ${feedbackRating}-star feedback has been recorded.`, 'SUCCESS');
@@ -229,6 +233,7 @@ export const SupportPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      {!isDemoMode() && <p role="status" className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-200">Help content is available. Ticket submission and service monitoring are not connected in this workspace; demonstration statistics are examples.</p>}
       {/* ── Global Search Hero ──────────────────────────────────────────── */}
       <div className="relative p-8 rounded-3xl bg-gradient-to-br from-indigo-950/80 via-[#121214] to-cyan-950/40 border border-white/10 glass-card text-center space-y-4 overflow-hidden">
         <div className="absolute -top-20 -right-20 w-64 h-64 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
@@ -270,7 +275,7 @@ export const SupportPage: React.FC = () => {
 
           <div className="flex items-center justify-center gap-6 text-xs text-zinc-400 pt-2">
             <span>Popular: </span>
-            {['Budget alerts', 'AI Copilot', 'Export data', '2FA setup'].map((q) => (
+            {['Budget alerts', 'AI Copilot', 'Export data', 'JWT auth'].map((q) => (
               <button key={q} onClick={() => setGlobalSearch(q)} className="text-indigo-400 hover:underline">{q}</button>
             ))}
           </div>
@@ -631,7 +636,7 @@ export const SupportPage: React.FC = () => {
       )}
 
       {/* ── Tickets ─────────────────────────────────────────────────────── */}
-      {activeTab === 'tickets' && (
+      {activeTab === 'tickets' && isDemoMode() && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-lg text-white">Support Tickets</h2>
@@ -674,7 +679,7 @@ export const SupportPage: React.FC = () => {
       )}
 
       {/* ── System Status ────────────────────────────────────────────────── */}
-      {activeTab === 'status' && (
+      {activeTab === 'status' && isDemoMode() && (
         <div className="space-y-5">
           {/* Overall banner */}
           <div className={`p-5 rounded-2xl border flex items-center justify-between ${degradedCount > 0 ? 'bg-amber-500/8 border-amber-500/25' : 'bg-emerald-500/8 border-emerald-500/25'}`}>

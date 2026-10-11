@@ -42,6 +42,8 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
 
         refreshTokenRepository.deleteByUser(user);
+        // Hibernate queues inserts before deletes; flush the old unique user row first.
+        refreshTokenRepository.flush();
 
         RefreshToken refreshToken = RefreshToken.builder()
                 .user(user)

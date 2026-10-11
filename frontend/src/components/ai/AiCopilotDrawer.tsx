@@ -50,7 +50,7 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({ isOpen, onClos
         ...prev,
         {
           role: 'assistant',
-          text: res.answer || 'Based on your recent transactions, your net financial trajectory is positive.',
+          text: res.answer || 'No spending insight was returned. Please try another question.',
           insights: res.insights,
           suggestedAction: res.suggestedAction,
         }
@@ -58,7 +58,7 @@ export const AiCopilotDrawer: React.FC<AiCopilotDrawerProps> = ({ isOpen, onClos
     } catch (e) {
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', text: 'Analyzed your spending records. Dining out is your top discretionary expense category.' }
+        { role: 'assistant', text: e instanceof Error ? `Unable to load insights: ${e.message}` : 'Unable to load insights. Please try again.' }
       ]);
     } finally {
       setLoading(false);

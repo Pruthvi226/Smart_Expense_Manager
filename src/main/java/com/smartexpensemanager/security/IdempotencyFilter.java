@@ -1,6 +1,7 @@
 package com.smartexpensemanager.security;
 
 import com.smartexpensemanager.entity.IdempotencyKey;
+import com.smartexpensemanager.exception.IdempotencyException;
 import com.smartexpensemanager.service.IdempotencyService;
 import com.smartexpensemanager.util.SecurityUtil;
 import jakarta.servlet.FilterChain;
@@ -11,11 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 @Component
@@ -39,7 +38,8 @@ public class IdempotencyFilter extends OncePerRequestFilter {
         String keyHeader = request.getHeader(IDEMPOTENCY_KEY_HEADER);
         String method = request.getMethod();
 
-        if (keyHeader == null || keyHeader.isBlank() || !("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method))) {
+        if (keyHeader == null || keyHeader.isBlank()
+                || !("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method))) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -50,15 +50,28 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             return;
         }
 
-        ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request);
+        if (keyHeader.length() > 128) {
+            response.setStatus(400);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"status\":400,\"message\":\"Idempotency-Key cannot exceed 128 characters\"}");
+            return;
+        }
+
+        CachedBodyHttpServletRequest wrappedRequest = new CachedBodyHttpServletRequest(request);
         ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(response);
 
-        String requestBody = new String(wrappedRequest.getContentAsByteArray(), StandardCharsets.UTF_8);
-        String requestHash = idempotencyService.computeHash(request.getRequestURI(), requestBody);
+        String requestHash = idempotencyService.computeHash(
+                method + " " + request.getRequestURI() + "?" + request.getQueryString(), wrappedRequest.getCachedBodyAsString());
 
         Optional<IdempotencyKey> existingKeyOpt = idempotencyService.findKey(userId, keyHeader);
         if (existingKeyOpt.isPresent()) {
             IdempotencyKey existingKey = existingKeyOpt.get();
+            if (!requestHash.equals(existingKey.getRequestHash())) {
+                response.setStatus(409);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"status\":409,\"message\":\"Idempotency-Key was already used with a different request\"}");
+                return;
+            }
             log.info("Duplicate request detected with Idempotency-Key: {}. Returning cached response.", keyHeader);
             response.setStatus(existingKey.getResponseStatus());
             response.setContentType("application/json");
@@ -72,8 +85,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
 
         int status = wrappedResponse.getStatus();
         if (status >= 200 && status < 300) {
-            byte[] responseArray = wrappedResponse.getContentAsByteArray();
-            String responseBody = new String(responseArray, StandardCharsets.UTF_8);
+            String responseBody = new String(wrappedResponse.getContentAsByteArray());
             try {
                 idempotencyService.saveKey(userId, keyHeader, requestHash, status, responseBody);
             } catch (Exception e) {

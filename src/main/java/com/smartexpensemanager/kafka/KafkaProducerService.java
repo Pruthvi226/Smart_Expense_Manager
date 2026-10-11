@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class KafkaProducerService {
@@ -50,6 +52,20 @@ public class KafkaProducerService {
     }
 
     private void sendKafkaEvent(String topic, String key, Object payload) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()
+                && TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    dispatchKafkaEvent(topic, key, payload);
+                }
+            });
+        } else {
+            dispatchKafkaEvent(topic, key, payload);
+        }
+    }
+
+    private void dispatchKafkaEvent(String topic, String key, Object payload) {
         if (kafkaTemplate == null) {
             log.info("Kafka disabled. In-memory Spring domain event processed for topic: {}", topic);
             return;

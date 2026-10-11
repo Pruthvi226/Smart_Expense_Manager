@@ -7,6 +7,10 @@ import {
 import type { Expense } from '../types';
 import { useExpenses } from '../context/ExpenseContext';
 import { useNotifications } from '../context/NotificationContext';
+import { Button, Card } from '../components/ui';
+import { formatCurrency, initials } from '../lib/utils';
+import { request, isDemoMode } from '../services/api';
+import { encodeCsv } from '../lib/csv';
 
 interface TransactionsPageProps {
   onOpenAddModal: () => void;
@@ -44,6 +48,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
   const [amountMax, setAmountMax] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -57,7 +62,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ArrowUpDown size={12} className="text-zinc-600" />;
-    return sortDir === 'asc' ? <ArrowUp size={12} className="text-indigo-400" /> : <ArrowDown size={12} className="text-indigo-400" />;
+    return sortDir === 'asc' ? <ArrowUp size={12} className="text-teal-400" /> : <ArrowDown size={12} className="text-teal-400" />;
   };
 
   const filtered = useMemo(() => {
@@ -109,21 +114,32 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
     }
   };
 
-  const handleBulkDelete = () => {
-    selectedIds.forEach(id => deleteExpense(id));
-    addNotification('Bulk Delete', `${selectedIds.size} transaction(s) deleted.`, 'WARNING');
-    setSelectedIds(new Set());
+  const handleBulkDelete = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    const failed = new Set<number>();
+    let removed = 0;
+    for (const id of selectedIds) {
+      try {
+        if (!isDemoMode()) await request(`/expenses/${id}`, { method: 'DELETE' });
+        deleteExpense(id);
+        removed++;
+      } catch { failed.add(id); }
+    }
+    addNotification('Bulk deletion finished', `${removed} transaction(s) deleted.${failed.size ? ` ${failed.size} could not be deleted; retry those records.` : ''}`, failed.size ? 'ALERT' : 'WARNING');
+    setSelectedIds(failed);
     setConfirmBulkDelete(false);
+    setDeleting(false);
   };
 
   const exportCSV = useCallback(() => {
     const headers = ['ID', 'Title', 'Amount', 'Category', 'Date', 'Payment Method', 'Location', 'Tags', 'Description'];
     const rows = filtered.map(e => [
-      e.id, `"${e.title}"`, e.amount.toFixed(2), `"${e.category}"`,
-      e.expenseDate, `"${e.paymentMethod ?? ''}"`, `"${e.location ?? ''}"`,
-      `"${(e.tags ?? []).join('; ')}"`, `"${e.description ?? ''}"`
+      String(e.id), e.title, e.amount.toFixed(2), e.category,
+      e.expenseDate, e.paymentMethod ?? '', e.location ?? '',
+      (e.tags ?? []).join('; '), e.description ?? ''
     ]);
-    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const csv = encodeCsv([headers, ...rows]);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -155,7 +171,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
         <div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight">Transactions & Outflows</h1>
           <p className="text-xs text-zinc-400">
-            {filtered.length} transactions · Total: <span className="text-rose-400 font-mono font-bold">${totalFiltered.toFixed(2)}</span>
+            {filtered.length} transactions · Total:{' '}
+            <span className="text-rose-400 font-mono font-bold">{formatCurrency(totalFiltered)}</span>
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -163,12 +180,12 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
             onClick={() => setShowFilters(f => !f)}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
               showFilters || hasActiveFilters
-                ? 'bg-indigo-600/20 text-indigo-400 border-indigo-500/40'
+                ? 'bg-teal-600/20 text-teal-400 border-teal-500/40'
                 : 'bg-white/5 hover:bg-white/10 text-zinc-300 border-white/10'
             }`}
           >
             <SlidersHorizontal size={14} />
-            Filters {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />}
+            Filters {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-teal-400" />}
           </button>
           <button
             onClick={exportCSV}
@@ -177,20 +194,17 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
             <FileSpreadsheet size={15} />
             Export CSV
           </button>
-          <button
-            onClick={onOpenAddModal}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl primary-gradient-bg text-white text-xs font-semibold shadow-lg primary-gradient-glow hover:opacity-95 transition-all"
-          >
+          <Button onClick={onOpenAddModal} size="sm">
             <Plus size={16} />
             Add Transaction
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Search + Category pills */}
-      <div className="p-4 rounded-2xl glass-card space-y-3">
+      <Card className="space-y-3" padding="sm">
         <div className="flex flex-col md:flex-row gap-4 items-center">
-          <div className="w-full md:w-80 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/10 focus-within:border-indigo-500/50 transition-all">
+          <div className="w-full md:w-80 flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/10 focus-within:border-teal-500/50 transition-all">
             <Search size={16} className="text-zinc-500 flex-shrink-0" />
             <input
               type="text"
@@ -215,7 +229,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 onClick={() => { setSelectedCategory(cat); setCurrentPage(1); }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
                   selectedCategory === cat
-                    ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/40'
+                    ? 'bg-teal-600/20 text-teal-400 border border-teal-500/40'
                     : 'bg-white/[0.02] text-zinc-400 hover:text-white border border-white/5'
                 }`}
               >
@@ -231,22 +245,22 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
             <div>
               <label className="block text-[10px] font-semibold text-zinc-500 mb-1 uppercase">From Date</label>
               <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setCurrentPage(1); }}
-                className="w-full bg-[#18181B] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500" />
+                className="w-full bg-[#18181B] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500" />
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-zinc-500 mb-1 uppercase">To Date</label>
               <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setCurrentPage(1); }}
-                className="w-full bg-[#18181B] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500" />
+                className="w-full bg-[#18181B] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500" />
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-zinc-500 mb-1 uppercase">Min Amount ($)</label>
               <input type="number" min="0" value={amountMin} onChange={e => { setAmountMin(e.target.value); setCurrentPage(1); }} placeholder="0.00"
-                className="w-full bg-[#18181B] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500" />
+                className="w-full bg-[#18181B] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500" />
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-zinc-500 mb-1 uppercase">Max Amount ($)</label>
               <input type="number" min="0" value={amountMax} onChange={e => { setAmountMax(e.target.value); setCurrentPage(1); }} placeholder="9999.99"
-                className="w-full bg-[#18181B] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500" />
+                className="w-full bg-[#18181B] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500" />
             </div>
             {hasActiveFilters && (
               <button onClick={clearFilters} className="col-span-2 md:col-span-4 flex items-center gap-2 justify-center text-xs text-zinc-400 hover:text-rose-400 font-semibold transition-colors">
@@ -255,12 +269,12 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
             )}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Bulk action bar */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-indigo-600/10 border border-indigo-500/30">
-          <span className="text-xs font-semibold text-indigo-300">{selectedIds.size} selected</span>
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-teal-600/10 border border-teal-500/30">
+          <span className="text-xs font-semibold text-teal-300">{selectedIds.size} selected</span>
           <div className="flex-1" />
           {!confirmBulkDelete ? (
             <button onClick={() => setConfirmBulkDelete(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/30 text-xs font-semibold hover:bg-rose-500/20 transition-all">
@@ -290,7 +304,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     type="checkbox"
                     checked={selectedIds.size === paginated.length && paginated.length > 0}
                     onChange={toggleSelectAll}
-                    className="rounded accent-indigo-500"
+                    className="rounded accent-teal-500"
                     aria-label="Select all"
                   />
                 </th>
@@ -328,7 +342,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                       <p className="text-sm font-semibold">No transactions found</p>
                       <p className="text-xs">Try adjusting your search or filters</p>
                       {hasActiveFilters && (
-                        <button onClick={clearFilters} className="text-xs text-indigo-400 hover:underline">Clear all filters</button>
+                        <button onClick={clearFilters} className="text-xs text-teal-400 hover:underline">Clear all filters</button>
                       )}
                     </div>
                   </td>
@@ -345,14 +359,14 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                         type="checkbox"
                         checked={selectedIds.has(exp.id)}
                         onChange={() => toggleSelect(exp.id)}
-                        className="rounded accent-indigo-500"
+                        className="rounded accent-teal-500"
                         aria-label={`Select ${exp.title}`}
                       />
                     </td>
                     <td className="py-4 font-semibold text-white" onClick={() => onSelectExpense(exp)}>
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold text-sm border border-indigo-500/30 flex-shrink-0">
-                          {exp.title.charAt(0).toUpperCase()}
+                        <div className="w-9 h-9 rounded-xl bg-teal-600/20 text-teal-300 flex items-center justify-center font-bold text-sm border border-teal-500/30 flex-shrink-0">
+                          {initials(exp.title)}
                         </div>
                         <div>
                           <span className="block">{exp.title}</span>
@@ -381,12 +395,12 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                       {exp.expenseDate}
                     </td>
                     <td className="text-right font-mono font-bold text-rose-400 tabular-nums" onClick={() => onSelectExpense(exp)}>
-                      -${exp.amount.toFixed(2)}
+                      -{formatCurrency(exp.amount)}
                     </td>
                     <td className="text-right pr-2">
                       <button
                         onClick={() => onSelectExpense(exp)}
-                        className="px-2.5 py-1 rounded-lg text-indigo-400 hover:text-indigo-300 hover:bg-indigo-600/10 font-semibold text-[11px] transition-all"
+                        className="px-2.5 py-1 rounded-lg text-teal-400 hover:text-teal-300 hover:bg-teal-600/10 font-semibold text-[11px] transition-all"
                         aria-label={`View details for ${exp.title}`}
                       >
                         Details →
@@ -406,7 +420,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
               {filtered.length === 0 ? '0' : `${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, filtered.length)}`} of {filtered.length}
             </span>
             {hasActiveFilters && (
-              <span className="text-indigo-400 font-semibold">(filtered from {expenses.length} total)</span>
+              <span className="text-teal-400 font-semibold">(filtered from {expenses.length} total)</span>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -427,7 +441,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
                     onClick={() => setCurrentPage(page)}
                     className={`w-7 h-7 rounded-lg text-xs font-semibold transition-all ${
                       currentPage === page
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-teal-600 text-white'
                         : 'bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'
                     }`}
                   >
@@ -452,9 +466,9 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({
       {/* Summary stats bar */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Filtered Total', value: `$${totalFiltered.toFixed(2)}`, color: 'text-rose-400' },
-          { label: 'Avg per Transaction', value: `$${filtered.length > 0 ? (totalFiltered / filtered.length).toFixed(2) : '0.00'}`, color: 'text-amber-400' },
-          { label: 'Highest Transaction', value: `$${filtered.length > 0 ? Math.max(...filtered.map(e => e.amount)).toFixed(2) : '0.00'}`, color: 'text-indigo-400' },
+          { label: 'Filtered Total', value: formatCurrency(totalFiltered), color: 'text-rose-400' },
+          { label: 'Avg per Transaction', value: formatCurrency(filtered.length > 0 ? totalFiltered / filtered.length : 0), color: 'text-amber-400' },
+          { label: 'Highest Transaction', value: formatCurrency(filtered.length > 0 ? Math.max(...filtered.map(e => e.amount)) : 0), color: 'text-teal-400' },
         ].map(({ label, value, color }) => (
           <div key={label} className="p-4 rounded-2xl glass-card text-center">
             <p className="text-[10px] text-zinc-500 uppercase font-semibold">{label}</p>

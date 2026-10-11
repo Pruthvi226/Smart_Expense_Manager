@@ -1,126 +1,191 @@
 import React from 'react';
-import { Sparkles, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowRight, Database, Layers, Radio, ShieldCheck, Zap } from 'lucide-react';
+import { Button } from '../components/ui';
 
 interface LandingPageProps {
   onGetStarted: () => void;
+  onSignIn: () => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+const stack = [
+  'Java 21',
+  'Spring Boot 3',
+  'TypeScript',
+  'MySQL',
+  'Redis',
+  'Apache Kafka',
+  'Docker',
+];
+
+const pillars = [
+  {
+    icon: Zap,
+    title: 'Sub-100ms cached reads',
+    body: 'SHA-256 Redis idempotency keys and Spring Cache keep hot dashboard endpoints fast under load.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Secure by default',
+    body: 'JWT auth, Spring Security filters, optimistic locking with @Version, and token-bucket rate limits.',
+  },
+  {
+    icon: Radio,
+    title: 'Event-driven workflows',
+    body: 'Background analytics, notifications, and audit trails fan out across Kafka topics in KRaft mode.',
+  },
+];
+
+export const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onSignIn }) => {
   return (
-    <div className="min-h-screen bg-[#09090B] text-white selection:bg-indigo-500 selection:text-white font-['Outfit',sans-serif]">
-      {/* Navigation Header */}
-      <nav className="h-20 max-w-7xl mx-auto px-6 flex items-center justify-between border-b border-white/5">
+    <div className="min-h-screen text-white font-['Sora',sans-serif] relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(20,184,166,0.18),_transparent_55%),radial-gradient(ellipse_at_bottom_right,_rgba(6,182,212,0.12),_transparent_45%),linear-gradient(180deg,#07111a_0%,#0a1622_45%,#071018_100%)]" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.08] bg-[url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22 viewBox=%220 0 40 40%22%3E%3Cpath d=%22M0 39.5h40M39.5 0v40%22 stroke=%22%23fff%22 stroke-width=%221%22 fill=%22none%22/%3E%3C/svg%3E')]" />
+
+      <nav className="relative z-10 h-16 sm:h-20 max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl primary-gradient-bg flex items-center justify-center font-bold text-white shadow-lg primary-gradient-glow text-xl">
-            S
+          <div className="w-11 h-11 rounded-2xl bg-teal-500 text-slate-950 flex items-center justify-center font-extrabold text-lg tracking-tight">
+            SE
           </div>
-          <span className="font-bold text-lg text-white">SmartExpense</span>
+          <div>
+            <p className="font-bold text-lg leading-none tracking-tight">SmartExpense</p>
+            <p className="text-[10px] uppercase tracking-[0.22em] text-teal-300/80 mt-1">Manager</p>
+          </div>
         </div>
-
-        <div className="hidden md:flex items-center gap-8 text-xs font-semibold text-zinc-400">
-          <a href="#features" className="hover:text-white transition-colors">Features</a>
-          <a href="#architecture" className="hover:text-white transition-colors">Architecture</a>
-          <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={onSignIn}>
+            Sign in
+          </Button>
+          <Button size="sm" onClick={onGetStarted}>
+            Open platform
+          </Button>
         </div>
-
-        <button
-          onClick={onGetStarted}
-          className="px-5 py-2.5 rounded-xl primary-gradient-bg text-white text-xs font-bold shadow-lg primary-gradient-glow hover:opacity-95 transition-all"
-        >
-          Open App Dashboard →
-        </button>
       </nav>
 
-      {/* Hero Section */}
-      <section className="pt-20 pb-16 px-6 max-w-5xl mx-auto text-center space-y-8 relative">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 text-xs font-semibold">
-          <Sparkles size={14} />
-          <span>Enterprise FinTech V2 Platform</span>
-        </div>
-
-        <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight leading-tight text-white">
-          Precision Financial Control for <span className="primary-gradient-text">Modern Engineers</span>
-        </h1>
-
-        <p className="text-base text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-          Smart Expense Manager combines Java 21, Spring Boot 3, Redis real-time caching, Kafka event streaming, and AI advisory into a unified FinTech experience.
-        </p>
-
-        <div className="flex items-center justify-center gap-4 pt-4">
-          <button
-            onClick={onGetStarted}
-            className="px-8 py-3.5 rounded-xl primary-gradient-bg text-white text-sm font-bold shadow-xl primary-gradient-glow hover:scale-105 transition-all flex items-center gap-2"
+      <section className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-8 sm:pt-10 pb-16 sm:pb-20 grid lg:grid-cols-[1.15fr_0.85fr] gap-8 lg:gap-12 items-center min-h-[calc(100dvh-5rem)]">
+        <div className="space-y-8">
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
+            className="text-xs font-semibold uppercase tracking-[0.24em] text-teal-300/90"
           >
-            <span>Launch Interactive App</span>
-            <ArrowRight size={16} />
-          </button>
+            Full-stack fintech platform
+          </motion.p>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.05 }}
+            className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight leading-[0.95] text-white"
+          >
+            SmartExpense
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.12 }}
+            className="text-lg text-slate-300 max-w-xl leading-relaxed"
+          >
+            Track spending, enforce budgets, and stream financial events with a Java 21 / Spring Boot backend,
+            TypeScript SPA, MySQL, Redis, and Kafka — packaged for Docker.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.18 }}
+            className="flex flex-wrap items-center gap-3"
+          >
+            <Button size="lg" className="w-full sm:w-auto" onClick={onGetStarted}>
+              Launch workspace
+              <ArrowRight size={16} />
+            </Button>
+            <Button variant="secondary" size="lg" className="w-full sm:w-auto" onClick={onSignIn}>
+              Sign in
+            </Button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.28 }}
+            className="flex flex-wrap gap-2 pt-2"
+          >
+            {stack.map((item) => (
+              <span
+                key={item}
+                className="text-[11px] font-semibold tracking-wide px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.03] text-slate-300"
+              >
+                {item}
+              </span>
+            ))}
+          </motion.div>
         </div>
 
-        {/* Hero Dashboard Preview Card */}
-        <div className="pt-12">
-          <div className="p-4 rounded-3xl bg-white/[0.02] border border-white/10 shadow-2xl backdrop-blur-2xl glass-card">
-            <div className="h-64 rounded-2xl bg-gradient-to-br from-zinc-900 to-indigo-950/40 p-6 flex flex-col justify-between text-left">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Live Dashboard Stream</span>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full">Active</span>
-              </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.15 }}
+          className="relative"
+        >
+          <div className="absolute -inset-6 rounded-[2rem] bg-teal-500/10 blur-3xl" />
+          <div className="relative rounded-[1.75rem] border border-white/10 bg-[#0c1824]/80 backdrop-blur-xl overflow-hidden shadow-2xl shadow-black/40">
+            <div className="h-11 px-4 flex items-center gap-2 border-b border-white/10 bg-white/[0.02]">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-400/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
+              <span className="ml-3 text-[11px] text-slate-400 font-medium">dashboard · live cashflow</span>
+            </div>
+            <div className="p-6 space-y-5">
               <div>
-                <span className="text-xs text-zinc-400">Total Monthly Savings</span>
-                <h3 className="text-4xl font-extrabold text-white tabular-nums">$7,579.50</h3>
+                <p className="text-xs text-slate-400 uppercase tracking-wider">Net savings</p>
+                <p className="text-4xl font-extrabold tabular-nums mt-1">$7,579.50</p>
+                <p className="text-sm text-teal-300 mt-1">+18.4% month over month</p>
               </div>
-              <div className="flex gap-4 text-xs font-semibold text-zinc-300">
-                <span>+18.4% MoM Velocity</span>
-                <span>89/100 Financial Health Score</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <Database size={16} className="text-cyan-300 mb-2" />
+                  <p className="text-[11px] text-slate-400">MySQL + Flyway</p>
+                  <p className="text-sm font-semibold">Versioned schema</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <Layers size={16} className="text-teal-300 mb-2" />
+                  <p className="text-[11px] text-slate-400">Redis cache</p>
+                  <p className="text-sm font-semibold">&lt;100ms reads</p>
+                </div>
+              </div>
+              <div className="h-24 rounded-2xl border border-white/10 bg-gradient-to-r from-teal-500/20 via-cyan-500/10 to-transparent flex items-end px-3 pb-3 gap-1">
+                {[40, 55, 35, 70, 48, 82, 60].map((h, i) => (
+                  <div
+                    key={i}
+                    className="flex-1 rounded-t-md bg-teal-400/70"
+                    style={{ height: `${h}%` }}
+                  />
+                ))}
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </section>
 
-      {/* Feature Grid */}
-      <section id="features" className="py-20 px-6 max-w-6xl mx-auto space-y-12 border-t border-white/5">
-        <div className="text-center space-y-2">
-          <h2 className="text-3xl font-extrabold text-white">Built to Stripe & Engineering Standards</h2>
-          <p className="text-xs text-zinc-400">Production features engineered for zero data loss and sub-10ms response times.</p>
+      <section className="relative z-10 border-t border-white/10 bg-[#071018]/70">
+        <div className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-3 gap-8">
+          {pillars.map(({ icon: Icon, title, body }) => (
+            <div key={title} className="space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/15 text-teal-300 flex items-center justify-center border border-teal-500/20">
+                <Icon size={18} />
+              </div>
+              <h2 className="text-lg font-bold">{title}</h2>
+              <p className="text-sm text-slate-400 leading-relaxed">{body}</p>
+            </div>
+          ))}
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 rounded-3xl glass-card space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">
-              <Zap size={20} />
-            </div>
-            <h3 className="font-bold text-base text-white">Idempotency-Key UUID</h3>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Guarantees zero duplicate transaction writes on network retries or double clicks.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-3xl glass-card space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
-              <Sparkles size={20} />
-            </div>
-            <h3 className="font-bold text-base text-white">AI Copilot Advisory</h3>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Natural language queries, instant budget predictions, and automated spending anomaly detection.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-3xl glass-card space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-              <ShieldCheck size={20} />
-            </div>
-            <h3 className="font-bold text-base text-white">Optimistic Lock Concurrency</h3>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              JPA `@Version` field validation with automated `409 Conflict` HTTP exception mapping.
-            </p>
-          </div>
-        </div>
+        <footer className="border-t border-white/10 py-6 text-center text-xs text-slate-500">
+          Smart Expense Manager — Java 21 · Spring Boot 3 · TypeScript · MySQL · Redis · Kafka · Docker
+        </footer>
       </section>
-
-      {/* Footer */}
-      <footer className="py-8 border-t border-white/5 text-center text-xs text-zinc-500">
-        Smart Expense Manager V2 – Developed with Java 21, Spring Boot 3, MySQL 8 & React 19.
-      </footer>
     </div>
   );
 };
