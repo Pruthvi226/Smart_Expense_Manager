@@ -1,0 +1,30 @@
+# Disposable verification only. No existing deployment database or volume is used.
+name: sem-render-verification
+services:
+  mysql:
+    image: mysql:8.0
+    tmpfs:
+      - /var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${RENDER_TEST_DB_PASSWORD:?Supply a temporary test password}
+      MYSQL_DATABASE: render_verification
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysql -uroot -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  app:
+    image: smart-expense-manager:render-free
+    mem_limit: 512m
+    ports:
+      - "127.0.0.1:13000:10000"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/render_verification?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${RENDER_TEST_DB_PASSWORD:?Supply a temporary test password}
+      JWT_SECRET: RenderVerificationOnlySigningKeyAtLeast64BytesLongNotForPublicDeployment1234567890
+      APP_PUBLIC_BASE_URL: http://localhost:13000
+      APP_MAIL_ENABLED: "false"
+    depends_on:
+      mysql:
+        condition: service_healthy

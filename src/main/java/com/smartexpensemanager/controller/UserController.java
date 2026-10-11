@@ -13,13 +13,18 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping({"/api/v1/users", "/api/users"})
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "User", description = "User profile management endpoints")
 public class UserController {
 
-    private UserService userService;
-    private SecurityUtil securityUtil;
+    private final UserService userService;
+    private final SecurityUtil securityUtil;
+
+    public UserController(UserService userService, SecurityUtil securityUtil) {
+        this.userService = userService;
+        this.securityUtil = securityUtil;
+    }
 
     @GetMapping("/profile")
     @Operation(summary = "Get current user profile")

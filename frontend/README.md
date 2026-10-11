@@ -1,32 +1,11 @@
-# React + TypeScript + Vite
+# Smart Expense Manager frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React/TypeScript, Vite, and Tailwind. Requires Node.js 22 and npm.
 
-Currently, two official plugins are available:
+Run npm ci, then npm run dev. The Vite server proxies /api to the local backend; start the API with its dev profile from the parent directory.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Use npm test, npm run lint, and npm run build for verification. Tests cover refresh/session races, sign-out, demo isolation, safe AI text, and CSV escaping. Four Fast Refresh export warnings remain; lint has no errors.
 
-## React Compiler
+Open ?demo=1 for an isolated sample-data workspace. Live API failures are displayed and are not converted into demo data. Password recovery requires configured backend SMTP. Support and integration previews are not connected services.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+See ../README.md and ../docs/IMPLEMENTATION_REPORT.md for full setup, changes, limitations, and deployment checks.

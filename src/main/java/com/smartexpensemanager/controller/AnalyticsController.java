@@ -30,6 +30,9 @@ public class AnalyticsController {
     public ResponseEntity<AnalyticsResponse> getAnalytics(
             @RequestParam(defaultValue = "6") Integer months) {
         Long userId = securityUtil.getCurrentUserId();
+        if (months < 1 || months > 24) {
+            throw new IllegalArgumentException("months must be between 1 and 24");
+        }
         AnalyticsResponse response = analyticsService.getAnalytics(userId, months);
         return ResponseEntity.ok(response);
     }

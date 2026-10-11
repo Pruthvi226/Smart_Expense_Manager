@@ -23,6 +23,9 @@ public class NotificationServiceImpl implements NotificationService {
     private final JavaMailSender mailSender;
     private final NotificationRepository notificationRepository;
 
+    @org.springframework.beans.factory.annotation.Value("${app.mail.enabled:true}")
+    private boolean mailEnabled;
+
     public NotificationServiceImpl(JavaMailSender mailSender, NotificationRepository notificationRepository) {
         this.mailSender = mailSender;
         this.notificationRepository = notificationRepository;
@@ -31,6 +34,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Async
     public void sendEmailAsync(String to, String subject, String body) {
+        if (!mailEnabled) return;
         if (to == null || to.isBlank()) {
             return;
         }
@@ -40,9 +44,9 @@ public class NotificationServiceImpl implements NotificationService {
             message.setSubject(subject);
             message.setText(body);
             mailSender.send(message);
-            log.info("Email sent successfully to {}", to);
+            log.info("Email delivery completed");
         } catch (Exception e) {
-            log.warn("Failed to send email to {}: {}. Logging notification locally.", to, e.getMessage());
+            log.warn("Email delivery failed ({})", e.getClass().getSimpleName());
         }
     }
 

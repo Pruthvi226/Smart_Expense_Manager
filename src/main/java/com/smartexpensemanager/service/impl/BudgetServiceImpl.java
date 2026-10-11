@@ -118,6 +118,7 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "dashboard", key = "#userId")
     public void deleteBudget(Long userId, Long budgetId) {
         Budget budget = budgetRepository.findById(budgetId)
                 .orElseThrow(() -> new ResourceNotFoundException("Budget", "id", budgetId));
@@ -125,6 +126,28 @@ public class BudgetServiceImpl implements BudgetService {
             throw new ResourceNotFoundException("Budget", "id", budgetId);
         }
         budgetRepository.delete(budget);
+    }
+
+    @Override
+    @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "dashboard", key = "#userId")
+    public BudgetResponse updateBudget(Long userId, Long budgetId, BudgetRequest request) {
+        Budget budget = budgetRepository.findById(budgetId)
+                .orElseThrow(() -> new ResourceNotFoundException("Budget", "id", budgetId));
+        if (!budget.getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Budget", "id", budgetId);
+        }
+        budgetRepository.findByUserAndCategoryAndMonthAndYear(budget.getUser(), request.getCategory(),
+                request.getMonth(), request.getYear()).ifPresent(existing -> {
+            if (!existing.getId().equals(budgetId)) {
+                throw new IllegalArgumentException("A budget already exists for that category and month");
+            }
+        });
+        budget.setCategory(request.getCategory());
+        budget.setMonth(request.getMonth());
+        budget.setYear(request.getYear());
+        budget.setLimitAmount(request.getLimitAmount());
+        return mapToBudgetResponse(budgetRepository.save(budget));
     }
 
     private BudgetResponse mapToBudgetResponse(Budget budget) {

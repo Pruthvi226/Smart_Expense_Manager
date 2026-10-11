@@ -1,30 +1,15 @@
-# Multi-stage Dockerfile for Smart Expense Manager V2 Frontend
-
-# Stage 1: Build stage with Node 20
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
-
-# Install dependencies
 COPY package.json package-lock.json* ./
-RUN npm ci || npm install
-
-# Copy source code and build production bundle
+RUN npm ci --include=dev
 COPY . .
 RUN npm run build
 
-# Stage 2: Production web server stage with Nginx
-FROM nginx:1.25-alpine
-WORKDIR /usr/share/nginx/html
-
-# Remove default nginx static assets
-RUN rm -rf ./*
-
-# Copy build artifacts from builder stage
-COPY --from=builder /app/dist .
-
-# Copy custom Nginx configuration
+FROM nginx:1.27-alpine
+RUN rm -rf /usr/share/nginx/html/*
+COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-
 EXPOSE 80
-
+HEALTHCHECK --interval=20s --timeout=3s --retries=5 \
+  CMD wget -q -O /dev/null http://127.0.0.1/health || exit 1
 CMD ["nginx", "-g", "daemon off;"]

@@ -12,6 +12,7 @@ import com.smartexpensemanager.repository.IncomeRepository;
 import com.smartexpensemanager.repository.UserRepository;
 import com.smartexpensemanager.service.AnalyticsService;
 import org.springframework.cache.annotation.Cacheable;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,10 +24,11 @@ import java.util.*;
 @Service
 public class AnalyticsServiceImpl implements AnalyticsService {
 
-    public AnalyticsServiceImpl(UserRepository userRepository, ExpenseRepository expenseRepository, IncomeRepository incomeRepository) {
+    public AnalyticsServiceImpl(UserRepository userRepository, ExpenseRepository expenseRepository, IncomeRepository incomeRepository, MeterRegistry meterRegistry) {
         this.userRepository = userRepository;
         this.expenseRepository = expenseRepository;
         this.incomeRepository = incomeRepository;
+        this.meterRegistry = meterRegistry;
     }
 
     private static final Logger log = LoggerFactory.getLogger(AnalyticsServiceImpl.class);
@@ -34,11 +36,13 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     private final UserRepository userRepository;
     private final ExpenseRepository expenseRepository;
     private final IncomeRepository incomeRepository;
+    private final MeterRegistry meterRegistry;
 
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "analytics", key = "#userId + '-' + #months", unless = "#result == null")
     public AnalyticsResponse getAnalytics(Long userId, Integer months) {
+        io.micrometer.core.instrument.Timer.Sample timer = io.micrometer.core.instrument.Timer.start(meterRegistry);
         if (months == null || months <= 0) {
             months = 6;
         }
@@ -153,7 +157,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         BigDecimal monthlyAvg = totalPeriodSpending.divide(BigDecimal.valueOf(months), 2, RoundingMode.HALF_UP);
         BigDecimal forecastNextMonth = monthlyAvg.multiply(BigDecimal.valueOf(1.05)); // 5% projected baseline growth
 
-        return AnalyticsResponse.builder()
+        AnalyticsResponse response = AnalyticsResponse.builder()
                 .averageDailySpending(avgDailySpending)
                 .highestSpendingDay(highestDay)
                 .lowestSpendingDay(lowestDay)
@@ -165,5 +169,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 .savingsTrend(new ArrayList<>())
                 .forecastNextMonthSpending(forecastNextMonth)
                 .build();
+            timer.stop(meterRegistry.timer("sem.cache.load", "cache", "analytics"));
+            return response;
     }
 }

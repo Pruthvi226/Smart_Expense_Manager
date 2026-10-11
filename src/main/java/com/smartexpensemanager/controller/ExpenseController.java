@@ -26,6 +26,8 @@ import java.time.LocalDate;
 @Tag(name = "Expense Module", description = "Endpoints for creating, updating, deleting, searching, filtering, and paginating expenses")
 public class ExpenseController {
 
+    private static final int MAX_PAGE_SIZE = 100;
+
     public ExpenseController(ExpenseService expenseService, SecurityUtil securityUtil) {
         this.expenseService = expenseService;
         this.securityUtil = securityUtil;
@@ -84,7 +86,15 @@ public class ExpenseController {
 
         Long userId = securityUtil.getCurrentUserId();
         Sort sort = sortDir.equalsIgnoreCase("ASC") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page, size, sort);
+        if (!java.util.Set.of("id", "title", "amount", "category", "expenseDate", "createdAt").contains(sortBy)
+                || !(sortDir.equalsIgnoreCase("ASC") || sortDir.equalsIgnoreCase("DESC"))) {
+            throw new IllegalArgumentException("Choose a supported sort field and ASC or DESC direction");
+        }
+        if ((from != null && to != null && from.isAfter(to))
+                || (minAmount != null && maxAmount != null && minAmount.compareTo(maxAmount) > 0)) {
+            throw new IllegalArgumentException("The start of a range must not exceed its end");
+        }
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_PAGE_SIZE), sort);
 
         PagedResponse<ExpenseResponse> response = expenseService.searchExpenses(
                 userId, category, from, to, minAmount, maxAmount, q, pageable);

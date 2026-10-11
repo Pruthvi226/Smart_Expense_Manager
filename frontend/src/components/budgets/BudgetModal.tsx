@@ -3,7 +3,8 @@ import { X, AlertTriangle, Sparkles, Trash2 } from 'lucide-react';
 import type { Budget } from '../../types';
 import { useExpenses } from '../../context/ExpenseContext';
 import { useNotifications } from '../../context/NotificationContext';
-import { request } from '../../services/api';
+import { request, isDemoMode } from '../../services/api';
+import { useDialog } from '../../lib/useDialog';
 
 const CATEGORIES = [
   'Food & Dining',
@@ -25,6 +26,7 @@ interface BudgetModalProps {
 }
 
 export const BudgetModal: React.FC<BudgetModalProps> = ({ isOpen, onClose, editBudget }) => {
+  const dialogRef = useDialog(isOpen, onClose);
   const { addBudget, updateBudget, deleteBudget, nextBudgetId, budgets } = useExpenses();
   const { addNotification } = useNotifications();
 
@@ -49,8 +51,9 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({ isOpen, onClose, editB
     } else {
       setCategory('Food & Dining');
       setLimitAmount('');
-      setMonth(now.getMonth() + 1);
-      setYear(now.getFullYear());
+      const today = new Date();
+      setMonth(today.getMonth() + 1);
+      setYear(today.getFullYear());
     }
     setError('');
     setConfirmDelete(false);
@@ -94,15 +97,19 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({ isOpen, onClose, editB
           version: 1,
           spentAmount: 0,
         };
-        await request('/budgets', {
+        const saved = await request<Budget>('/budgets', {
           method: 'POST',
           body: JSON.stringify({ category, limitAmount: limit, month, year }),
         });
-        addBudget(newBudget);
+        addBudget(isDemoMode() ? newBudget : { ...newBudget, ...saved });
         addNotification('Budget Created', `New budget for "${category}": $${limit.toFixed(2)}/month.`, 'SUCCESS');
       }
       onClose();
-    } catch {
+    } catch (failure) {
+      if (!isDemoMode()) {
+        setError(failure instanceof Error ? failure.message : 'Unable to save the budget. Please try again.');
+        return;
+      }
       // API failed — apply locally
       if (isEdit && editBudget) {
         updateBudget(editBudget.id, { category, limitAmount: limit, month, year });
@@ -131,7 +138,13 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({ isOpen, onClose, editB
     setSubmitting(true);
     try {
       await request(`/budgets/${editBudget.id}`, { method: 'DELETE' });
-    } catch { /* apply locally */ }
+    } catch (failure) {
+      if (!isDemoMode()) {
+        setError(failure instanceof Error ? failure.message : 'Unable to delete the budget. Please try again.');
+        setSubmitting(false);
+        return;
+      }
+    }
     deleteBudget(editBudget.id);
     addNotification('Budget Deleted', `Budget for "${editBudget.category}" has been removed.`, 'WARNING');
     setSubmitting(false);
@@ -146,6 +159,8 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({ isOpen, onClose, editB
 
   return (
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
       role="dialog"
       aria-modal="true"

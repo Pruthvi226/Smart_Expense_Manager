@@ -6,7 +6,8 @@ import {
 import type { Expense } from '../../types';
 import { useExpenses } from '../../context/ExpenseContext';
 import { useNotifications } from '../../context/NotificationContext';
-import { request } from '../../services/api';
+import { request, isDemoMode } from '../../services/api';
+import { useDialog } from '../../lib/useDialog';
 
 interface TransactionDrawerProps {
   expense: Expense | null;
@@ -28,6 +29,7 @@ export const TransactionDrawer: React.FC<TransactionDrawerProps> = ({
   onUpdated,
 }) => {
   const { updateExpense, deleteExpense } = useExpenses();
+  const dialogRef = useDialog(!!expense, onClose);
   const { addNotification } = useNotifications();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -75,7 +77,13 @@ export const TransactionDrawer: React.FC<TransactionDrawerProps> = ({
     };
     try {
       await request(`/expenses/${expense.id}`, { method: 'PUT', body: JSON.stringify(updates) });
-    } catch { /* apply locally */ }
+    } catch (failure) {
+      if (!isDemoMode()) {
+        addNotification('Unable to save', failure instanceof Error ? failure.message : 'Please try again.', 'ALERT');
+        setSubmitting(false);
+        return;
+      }
+    }
     updateExpense(expense.id, updates);
     addNotification('Transaction Updated', `"${updates.title}" saved successfully.`, 'SUCCESS');
     setSubmitting(false);
@@ -88,7 +96,13 @@ export const TransactionDrawer: React.FC<TransactionDrawerProps> = ({
     setSubmitting(true);
     try {
       await request(`/expenses/${expense.id}`, { method: 'DELETE' });
-    } catch { /* apply locally */ }
+    } catch (failure) {
+      if (!isDemoMode()) {
+        addNotification('Unable to delete', failure instanceof Error ? failure.message : 'Please try again.', 'ALERT');
+        setSubmitting(false);
+        return;
+      }
+    }
     deleteExpense(expense.id);
     addNotification('Transaction Deleted', `"${expense.title}" has been removed.`, 'WARNING');
     setSubmitting(false);
@@ -99,10 +113,10 @@ export const TransactionDrawer: React.FC<TransactionDrawerProps> = ({
   const fieldClass = `w-full bg-white/[0.04] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors`;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Transaction Details">
+    <div ref={dialogRef} tabIndex={-1} className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Transaction Details">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-lg bg-[#121214] border-l border-white/10 shadow-2xl flex flex-col">
+      <div className="absolute inset-y-0 right-0 max-w-full flex">
+        <div className="w-screen max-w-lg bg-[#0c1824] border-l border-white/10 shadow-2xl flex flex-col">
           {/* Header */}
           <div className="p-6 border-b border-white/10 flex items-center justify-between">
             <div className="flex items-center gap-3">

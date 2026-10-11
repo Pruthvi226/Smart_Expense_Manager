@@ -26,6 +26,17 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     private final Map<String, RequestCounter> requestCounts = new ConcurrentHashMap<>();
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return !request.getRequestURI().startsWith("/api/") || "OPTIONS".equals(request.getMethod());
+    }
+
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 60000)
+    public void removeExpiredCounters() {
+        long cutoff = System.currentTimeMillis() - 60000;
+        requestCounts.entrySet().removeIf(entry -> entry.getValue().startTime < cutoff);
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
@@ -44,6 +55,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         if (counter.count.get() > MAX_REQUESTS_PER_MINUTE) {
             log.warn("Rate limit exceeded for IP: {}", clientIp);
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+            response.setHeader("Retry-After", "60");
+            response.setHeader("X-RateLimit-Limit", String.valueOf(MAX_REQUESTS_PER_MINUTE));
+            response.setHeader("X-RateLimit-Remaining", "0");
             response.setContentType("application/json");
             response.getWriter().write("{\"status\":429,\"error\":\"Too Many Requests\",\"message\":\"Rate limit exceeded. Try again in a minute.\"}");
             return;
@@ -53,11 +67,8 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        String xfHeader = request.getHeader("X-Forwarded-For");
-        if (xfHeader == null) {
-            return request.getRemoteAddr();
-        }
-        return xfHeader.split(",")[0];
+        // Only the server's explicitly configured trusted proxy processing may change this.
+        return request.getRemoteAddr();
     }
 
     private static class RequestCounter {

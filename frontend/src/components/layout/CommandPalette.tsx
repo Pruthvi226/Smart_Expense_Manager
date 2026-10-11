@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useDialog } from '../../lib/useDialog';
 import {
   Search, Receipt, PieChart, BarChart3, Sparkles, X, CornerDownLeft,
   LayoutDashboard, FileText, Settings, HelpCircle, Plus
@@ -20,6 +21,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   openAddModal,
 }) => {
   const [query, setQuery] = useState('');
+  const dialogRef = useDialog(isOpen, onClose);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -108,6 +110,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   return (
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 bg-black/70 backdrop-blur-md"
       onClick={onClose}
       role="dialog"

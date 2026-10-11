@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, DollarSign, MapPin, CreditCard, Tag } from 'lucide-react';
+import { X, DollarSign, MapPin, CreditCard, Tag } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext';
 import { useExpenses } from '../../context/ExpenseContext';
 import type { Expense } from '../../types';
-import { request } from '../../services/api';
+import { request, isDemoMode } from '../../services/api';
+import { useDialog } from '../../lib/useDialog';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -41,6 +42,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   defaultType = 'EXPENSE',
 }) => {
   const { addNotification } = useNotifications();
+  const dialogRef = useDialog(isOpen, onClose);
   const { addExpense, nextExpenseId } = useExpenses();
 
   const [type, setType] = useState<'EXPENSE' | 'INCOME'>(defaultType);
@@ -115,16 +117,42 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
     try {
       const endpoint = type === 'EXPENSE' ? '/expenses' : '/incomes';
-      const payload = type === 'EXPENSE'
-        ? { title: newExpense.title, amount: parsedAmount, category, description: newExpense.description, expenseDate: date, paymentMethod, location: newExpense.location, tags: tagArray }
-        : { source: newExpense.title, amount: parsedAmount, description: newExpense.description, incomeDate: date };
+      const payload =
+        type === 'EXPENSE'
+          ? {
+              title: newExpense.title,
+              amount: parsedAmount,
+              category,
+              description: newExpense.description,
+              expenseDate: date,
+            }
+          : {
+              source: newExpense.title,
+              amount: parsedAmount,
+              description: newExpense.description,
+              incomeDate: date,
+            };
 
-      await request(endpoint, { method: 'POST', body: JSON.stringify(payload) });
-    } catch {
-      // Backend unreachable — apply locally
+      const created = await request<{ id?: number }>(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      if (type === 'EXPENSE') {
+        addExpense({ ...newExpense, id: Number(created?.id ?? newExpense.id) });
+      }
+    } catch (err) {
+      if (isDemoMode() && type === 'EXPENSE') {
+        addExpense(newExpense);
+      } else if (!isDemoMode()) {
+        addNotification(
+          'Save failed',
+          err instanceof Error ? err.message : 'The API rejected this transaction.',
+          'ALERT',
+        );
+        setSubmitting(false);
+        return;
+      }
     }
-
-    addExpense(newExpense);
     addNotification(
       `${type === 'EXPENSE' ? '💸 Expense' : '💰 Income'} Added`,
       `$${parsedAmount.toFixed(2)} for "${newExpense.title}" recorded successfully.`,
@@ -142,16 +170,17 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
+      ref={dialogRef}
+      tabIndex={-1}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
       aria-labelledby="add-tx-title"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg bg-[#121214] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+        className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto bg-[#0c1824] border border-white/10 rounded-t-2xl sm:rounded-2xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
-        style={{ animation: 'fadeInScale 0.2s ease-out' }}
       >
         {/* Header */}
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
@@ -219,7 +248,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           </div>
 
           {/* Amount + Category */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-400 mb-1">
                 Amount (USD) <span className="text-rose-400">*</span>
@@ -254,7 +283,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           </div>
 
           {/* Date + Payment Method */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-400 mb-1">
                 Date <span className="text-rose-400">*</span>
@@ -282,7 +311,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           </div>
 
           {/* Location + Tags */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-400 mb-1">
                 <MapPin size={12} className="inline mr-1 text-zinc-500" />
@@ -324,11 +353,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="pt-4 border-t border-white/10 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-[11px] text-cyan-400">
-              <Sparkles size={12} />
-              <span>Auto AI Categorization Active</span>
-            </div>
+          <div className="pt-4 border-t border-white/10 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <p className="text-[11px] text-zinc-500">Writes send an Idempotency-Key header.</p>
             <div className="flex gap-3">
               <button
                 type="button"

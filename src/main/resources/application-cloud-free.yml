@@ -1,0 +1,44 @@
+# Combine with prod. Persistent external MySQL remains mandatory.
+spring:
+  config:
+    activate:
+      on-profile: cloud-free
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+  datasource:
+    hikari:
+      maximum-pool-size: 3
+      minimum-idle: 0
+server:
+  address: 127.0.0.1
+  tomcat:
+    threads:
+      max: 40
+      min-spare: 4
+app:
+  public-base-url: ${APP_PUBLIC_BASE_URL:${RENDER_EXTERNAL_URL:}}
+  mail:
+    enabled: ${APP_MAIL_ENABLED:false}
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: readinessState,db
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  health:
+    redis:
+      enabled: false
+    kafka:
+      enabled: false
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

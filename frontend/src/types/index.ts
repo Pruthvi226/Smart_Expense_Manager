@@ -6,13 +6,17 @@ export interface User {
 }
 
 export interface AuthResponse {
-  accessToken: string;
-  tokenType: string;
-  userId: number;
-  email: string;
-  name: string;
-  role: string;
+  /** Spring AuthResponse field */
+  token?: string;
+  accessToken?: string;
+  tokenType?: string;
   refreshToken: string;
+  user?: User;
+  /** Demo / legacy flat fields */
+  userId?: number;
+  email?: string;
+  name?: string;
+  role?: string;
 }
 
 export interface Expense {
@@ -47,23 +51,31 @@ export interface Budget {
   limitAmount: number;
   month: number;
   year: number;
-  userId: number;
-  version: number;
+  userId?: number;
+  version?: number;
   spentAmount?: number;
 }
 
 export interface DashboardSummary {
-  totalBalance: number;
-  totalIncome: number;
-  totalExpense: number;
-  netSavings: number;
-  savingsRate: number;
-  financialScore: number;
-  monthOverMonthSavingsChange: number;
-  aiRecommendation: string;
-  recentExpenses: Expense[];
-  categorySpending: { category: string; amount: number; percentage: number }[];
-  budgetAlerts: { category: string; limitAmount: number; spentAmount: number; riskLevel: 'HEALTHY' | 'WARNING' | 'EXCEEDED' }[];
+  currentBalance?: number;
+  totalBalance?: number;
+  totalIncome?: number;
+  totalExpenses?: number;
+  totalExpense?: number;
+  netSavings?: number;
+  cashFlow?: number;
+  budgetRemaining?: number;
+  savingsRate?: number;
+  financialScore?: number;
+  monthOverMonthSavingsChange?: number;
+  aiRecommendation?: string;
+  recentExpenses?: Expense[];
+  recentTransactions?: Expense[];
+  categorySpending?: { category: string; amount: number; percentage: number }[];
+  topSpendingCategories?: { category: string; amount: number; percentage: number }[];
+  budgetAlerts?: { category: string; limitAmount: number; spentAmount: number; riskLevel: 'HEALTHY' | 'WARNING' | 'EXCEEDED' }[];
+  monthlyTrend?: { month: string; income: number; expenses: number }[];
+  weeklyTrend?: { dayOfWeek: string; amount: number }[];
 }
 
 export interface AiQueryResult {

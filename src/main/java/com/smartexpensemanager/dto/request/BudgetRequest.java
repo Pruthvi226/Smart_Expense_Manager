@@ -9,10 +9,12 @@ import java.math.BigDecimal;
 
 public class BudgetRequest {
     @NotBlank(message = "Category is required")
+    @jakarta.validation.constraints.Size(max = 100, message = "Category cannot exceed 100 characters")
     private String category;
 
     @NotNull(message = "Limit amount is required")
     @Positive(message = "Limit amount must be greater than zero")
+    @jakarta.validation.constraints.Digits(integer = 10, fraction = 2, message = "Limit supports up to 10 integer digits and 2 decimal places")
     private BigDecimal limitAmount;
 
     @NotNull(message = "Month is required")
@@ -22,6 +24,7 @@ public class BudgetRequest {
 
     @NotNull(message = "Year is required")
     @Min(value = 2000, message = "Year must be valid")
+    @Max(value = 9999, message = "Year must not exceed 9999")
     private Integer year;
 
     public BudgetRequest() {}

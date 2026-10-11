@@ -12,34 +12,48 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
+import org.springframework.context.annotation.Profile;
 
 @Configuration
 @EnableCaching
 public class RedisConfig {
 
     @Bean
+    @Profile("!cloud-free")
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
         template.setKeySerializer(new StringRedisSerializer());
-        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setValueSerializer(jsonSerializer());
         template.setHashKeySerializer(new StringRedisSerializer());
-        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setHashValueSerializer(jsonSerializer());
         template.afterPropertiesSet();
         return template;
     }
 
     @Bean
+    @Profile("!dev & !test & !cloud-free")
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         RedisCacheConfiguration cacheConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(15))
                 .disableCachingNullValues()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer()));
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer()));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(cacheConfig)
                 .transactionAware()
                 .build();
+    }
+
+    private static GenericJackson2JsonRedisSerializer jsonSerializer() {
+        return new GenericJackson2JsonRedisSerializer().configure(mapper ->
+                mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule()));
+    }
+
+    @Bean
+    @Profile({"dev", "test", "cloud-free"})
+    public org.springframework.cache.CacheManager localCacheManager() {
+        return new org.springframework.cache.concurrent.ConcurrentMapCacheManager("dashboard", "analytics");
     }
 }

@@ -23,6 +23,7 @@ public class User {
     private String password;
 
     @Enumerated(EnumType.STRING)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.VARCHAR)
     @Column(nullable = false)
     private Role role = Role.USER;
 

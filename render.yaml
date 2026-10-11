@@ -1,0 +1,29 @@
+# Free web service; external Aiven Free MySQL supplied separately.
+# Blueprint paths are relative to this active repository root.
+services:
+  - type: web
+    name: smart-expense-manager
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health/readiness
+    autoDeployTrigger: "off"
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod,cloud-free
+      - key: SERVER_FORWARD_HEADERS_STRATEGY
+        value: framework
+      - key: APP_MAIL_ENABLED
+        value: "false"
+      - key: JWT_EXPIRATION
+        value: "900000"
+      - key: JWT_SECRET
+        sync: false
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false

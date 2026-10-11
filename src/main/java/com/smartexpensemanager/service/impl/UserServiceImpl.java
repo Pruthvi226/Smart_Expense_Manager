@@ -22,6 +22,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public UserResponse getProfile(Long userId) {
         securityUtil.validateUserAccess(userId);
         User user = userRepository.findById(userId)
@@ -30,18 +31,20 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public UserResponse updateProfile(Long userId, UpdateProfileRequest request) {
         securityUtil.validateUserAccess(userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        if (!user.getEmail().equals(request.getEmail()) && 
-            userRepository.existsByEmail(request.getEmail())) {
+        String email = request.getEmail().trim().toLowerCase(java.util.Locale.ROOT);
+        if (!user.getEmail().equals(email) &&
+            userRepository.existsByEmail(email)) {
             throw new DuplicateEmailException("Email already exists");
         }
 
         user.setName(request.getName());
-        user.setEmail(request.getEmail());
+        user.setEmail(email);
         User updatedUser = userRepository.save(user);
         return mapToUserResponse(updatedUser);
     }

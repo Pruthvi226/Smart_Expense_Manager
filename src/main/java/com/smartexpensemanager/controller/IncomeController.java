@@ -61,7 +61,7 @@ public class IncomeController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Long userId = securityUtil.getCurrentUserId();
-        Pageable pageable = PageRequest.of(page, size, Sort.by("incomeDate").descending());
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size)), Sort.by("incomeDate").descending());
         PagedResponse<IncomeResponse> response = incomeService.getIncomes(userId, pageable);
         return ResponseEntity.ok(response);
     }

@@ -23,16 +23,25 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.Locale;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.beans.factory.annotation.Value;
+import com.smartexpensemanager.event.PasswordResetRequestedEvent;
 
 @Service
 public class AuthServiceImpl implements AuthService {
 
-    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, RefreshTokenService refreshTokenService, KafkaProducerService kafkaProducerService) {
+    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, RefreshTokenService refreshTokenService, KafkaProducerService kafkaProducerService, ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.refreshTokenService = refreshTokenService;
         this.kafkaProducerService = kafkaProducerService;
+        this.eventPublisher = eventPublisher;
     }
 
     private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
@@ -42,19 +51,24 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
     private final KafkaProducerService kafkaProducerService;
+    private final ApplicationEventPublisher eventPublisher;
+
+    @Value("${app.public-base-url}")
+    private String publicBaseUrl;
 
     private static final int MAX_FAILED_ATTEMPTS = 5;
 
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        String email = normalizeEmail(request.getEmail());
+        if (userRepository.existsByEmail(email)) {
             throw new DuplicateEmailException("Email is already registered");
         }
 
         User user = User.builder()
                 .name(request.getName())
-                .email(request.getEmail().toLowerCase())
+                .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(User.Role.USER)
                 .failedLoginAttempts(0)
@@ -85,9 +99,9 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = InvalidCredentialsException.class)
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
+        User user = userRepository.findByEmail(normalizeEmail(request.getEmail()))
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
 
         if (Boolean.FALSE.equals(user.getAccountNonLocked())) {
@@ -106,7 +120,7 @@ public class AuthServiceImpl implements AuthService {
             if (newAttempts >= MAX_FAILED_ATTEMPTS) {
                 user.setAccountNonLocked(false);
                 user.setLockTime(LocalDateTime.now());
-                log.warn("Account locked for user: {}", user.getEmail());
+                log.warn("Account locked for user ID {}", user.getId());
             }
             userRepository.save(user);
             throw new InvalidCredentialsException("Invalid email or password");
@@ -142,6 +156,9 @@ public class AuthServiceImpl implements AuthService {
                 .map(refreshTokenService::verifyExpiration)
                 .map(RefreshToken::getUser)
                 .map(user -> {
+                    if (Boolean.FALSE.equals(user.getAccountNonLocked())) {
+                        throw new TokenRefreshException("", "Account is locked. Please sign in again later.");
+                    }
                     String accessToken = jwtTokenProvider.generateTokenFromUserId(user.getId(), user.getEmail());
                     RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(user.getId());
                     return TokenRefreshResponse.builder()
@@ -163,23 +180,22 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public ApiResponse forgotPassword(ForgotPasswordRequest request) {
-        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", request.getEmail()));
-
-        String token = UUID.randomUUID().toString();
-        user.setResetPasswordToken(token);
-        user.setResetPasswordTokenExpiresAt(LocalDateTime.now().plusHours(1));
-        userRepository.save(user);
-
-        log.info("Generated password reset token for user {}: {}", user.getEmail(), token);
-        return new ApiResponse(true, "Password reset token sent. Check logs/email.");
+        userRepository.findByEmail(normalizeEmail(request.getEmail())).ifPresent(user -> {
+            String token = UUID.randomUUID().toString();
+            user.setResetPasswordToken(hashResetToken(token));
+            user.setResetPasswordTokenExpiresAt(LocalDateTime.now().plusHours(1));
+            userRepository.save(user);
+            String link = publicBaseUrl.replaceAll("/+$", "") + "/reset-password?token=" + token;
+            eventPublisher.publishEvent(new PasswordResetRequestedEvent(user.getEmail(), link));
+        });
+        return new ApiResponse(true, "If that email is registered, a password reset link will be sent.");
     }
 
     @Override
     @Transactional
     public ApiResponse resetPassword(ResetPasswordRequest request) {
-        User user = userRepository.findByResetPasswordToken(request.getToken())
-                .orElseThrow(() -> new ResourceNotFoundException("Reset token", "token", request.getToken()));
+        User user = userRepository.findByResetPasswordToken(hashResetToken(request.getToken()))
+                .orElseThrow(() -> new InvalidCredentialsException("Reset link is invalid or expired"));
 
         if (user.getResetPasswordTokenExpiresAt() == null || user.getResetPasswordTokenExpiresAt().isBefore(LocalDateTime.now())) {
             throw new InvalidCredentialsException("Reset token has expired");
@@ -188,8 +204,25 @@ public class AuthServiceImpl implements AuthService {
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setResetPasswordToken(null);
         user.setResetPasswordTokenExpiresAt(null);
+        user.setFailedLoginAttempts(0);
+        user.setAccountNonLocked(true);
+        user.setLockTime(null);
         userRepository.save(user);
+        refreshTokenService.deleteByUserId(user.getId());
 
         return new ApiResponse(true, "Password reset successfully. You may now login.");
+    }
+
+    private static String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String hashResetToken(String token) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(token.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 unavailable", ex);
+        }
     }
 }

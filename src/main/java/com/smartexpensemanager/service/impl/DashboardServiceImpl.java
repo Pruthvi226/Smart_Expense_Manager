@@ -16,6 +16,7 @@ import com.smartexpensemanager.repository.IncomeRepository;
 import com.smartexpensemanager.repository.UserRepository;
 import com.smartexpensemanager.service.DashboardService;
 import org.springframework.cache.annotation.Cacheable;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,11 +30,12 @@ import java.util.stream.Collectors;
 @Service
 public class DashboardServiceImpl implements DashboardService {
 
-    public DashboardServiceImpl(UserRepository userRepository, ExpenseRepository expenseRepository, IncomeRepository incomeRepository, BudgetRepository budgetRepository) {
+    public DashboardServiceImpl(UserRepository userRepository, ExpenseRepository expenseRepository, IncomeRepository incomeRepository, BudgetRepository budgetRepository, MeterRegistry meterRegistry) {
         this.userRepository = userRepository;
         this.expenseRepository = expenseRepository;
         this.incomeRepository = incomeRepository;
         this.budgetRepository = budgetRepository;
+        this.meterRegistry = meterRegistry;
     }
 
     private static final Logger log = LoggerFactory.getLogger(DashboardServiceImpl.class);
@@ -42,11 +44,13 @@ public class DashboardServiceImpl implements DashboardService {
     private final ExpenseRepository expenseRepository;
     private final IncomeRepository incomeRepository;
     private final BudgetRepository budgetRepository;
+    private final MeterRegistry meterRegistry;
 
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "dashboard", key = "#userId", unless = "#result == null")
     public DashboardSummaryResponse getDashboardSummary(Long userId) {
+        io.micrometer.core.instrument.Timer.Sample timer = io.micrometer.core.instrument.Timer.start(meterRegistry);
         log.info("Calculating Dashboard summary (Cache miss for userId: {})", userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
@@ -131,7 +135,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .createdAt(e.getCreatedAt())
                 .build()).collect(Collectors.toList());
 
-        return DashboardSummaryResponse.builder()
+        DashboardSummaryResponse response = DashboardSummaryResponse.builder()
                 .currentBalance(currentBalance)
                 .totalIncome(totalIncome)
                 .totalExpenses(totalExpenses)
@@ -144,6 +148,8 @@ public class DashboardServiceImpl implements DashboardService {
                 .recentTransactions(recentResponses)
                 .expenseDistribution(distribution)
                 .build();
+            timer.stop(meterRegistry.timer("sem.cache.load", "cache", "dashboard"));
+            return response;
     }
 
     @Override

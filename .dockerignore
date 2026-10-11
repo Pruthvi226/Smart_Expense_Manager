@@ -1,0 +1,16 @@
+target/
+.git/
+.idea/
+*.iml
+src/test/
+.mvn/
+*.md
+frontend/node_modules/
+frontend/dist/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+**/.DS_Store

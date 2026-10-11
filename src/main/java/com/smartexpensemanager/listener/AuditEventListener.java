@@ -11,7 +11,7 @@ import com.smartexpensemanager.event.UserRegisteredEvent;
 import com.smartexpensemanager.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
-import org.springframework.context.event.EventListener;
+import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -27,28 +27,28 @@ public class AuditEventListener {
     private final AuditLogRepository auditLogRepository;
 
     @Async
-    @EventListener
+    @TransactionalEventListener
     public void handleExpenseCreated(ExpenseCreatedEvent event) {
         saveAudit("EXPENSE_CREATED", "Expense", event.getExpenseId(), event.getUserId(),
                 "Title: " + event.getTitle() + ", Amount: " + event.getAmount());
     }
 
     @Async
-    @EventListener
+    @TransactionalEventListener
     public void handleExpenseUpdated(ExpenseUpdatedEvent event) {
         saveAudit("EXPENSE_UPDATED", "Expense", event.getExpenseId(), event.getUserId(),
                 "OldAmount: " + event.getOldAmount() + ", NewAmount: " + event.getNewAmount());
     }
 
     @Async
-    @EventListener
+    @TransactionalEventListener
     public void handleExpenseDeleted(ExpenseDeletedEvent event) {
         saveAudit("EXPENSE_DELETED", "Expense", event.getExpenseId(), event.getUserId(),
                 "Amount: " + event.getAmount());
     }
 
     @Async
-    @EventListener
+    @TransactionalEventListener
     public void handleUserRegistered(UserRegisteredEvent event) {
         saveAudit("USER_REGISTERED", "User", event.getUserId(), event.getUserId(),
                 "Email: " + event.getEmail());

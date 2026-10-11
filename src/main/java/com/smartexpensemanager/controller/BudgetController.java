@@ -36,6 +36,14 @@ public class BudgetController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
+    @PutMapping("/{id}")
+    @Operation(summary = "Update budget", description = "Updates a monthly category budget using create-or-update semantics")
+    public ResponseEntity<BudgetResponse> updateBudget(@PathVariable Long id, @Valid @RequestBody BudgetRequest request) {
+        Long userId = securityUtil.getCurrentUserId();
+        BudgetResponse response = budgetService.updateBudget(userId, id, request);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping
     @Operation(summary = "Get user budgets", description = "Retrieves active budgets for user, optionally filtered by month and year")
     public ResponseEntity<List<BudgetResponse>> getBudgets(

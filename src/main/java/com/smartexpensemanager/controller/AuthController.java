@@ -9,14 +9,16 @@ import com.smartexpensemanager.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping({"/api/v1/auth", "/api/auth"})
-@Tag(name = "Authentication Module", description = "User registration, login, JWT token refresh, logout, and password recovery endpoints")
+@Tag(
+    name = "Authentication Module",
+    description = "JWT registration, login, refresh, logout, and password recovery. Account lockout after 5 failed logins. TOTP 2FA is not implemented."
+)
 public class AuthController {
 
     public AuthController(AuthService authService, SecurityUtil securityUtil) {

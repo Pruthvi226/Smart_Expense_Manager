@@ -4,7 +4,8 @@ import {
   Download, Search, Plus, ChevronRight, TrendingUp, TrendingDown,
   PieChart, Zap, Shield, DollarSign, MessageSquare, Clock, CheckCheck
 } from 'lucide-react';
-import { request } from '../services/api';
+import { request, isDemoMode } from '../services/api';
+import { InlineText } from '../components/ui/InlineText';
 import type { AiQueryResult } from '../types';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -29,13 +30,13 @@ interface Conversation {
 // ── Constants ─────────────────────────────────────────────────────────────────
 const SUGGESTED_QUESTIONS = [
   'How much did I spend on Food this month?',
-  'Predict next month\'s total expenses',
+  'How much did I spend this month?',
   'What is my biggest expense category?',
   'Where can I reduce my spending?',
-  'Suggest a savings plan for next quarter',
-  'Show me my recurring subscription costs',
-  'Compare my income vs expenses this year',
-  'Generate a financial health report',
+  'What was my largest expense?',
+  'How much did I spend on Shopping?',
+  'Show spending on Transport',
+  'Summarize my expenses',
 ];
 
 const AI_INSIGHT_CARDS = [
@@ -134,13 +135,12 @@ function renderMarkdown(text: string): React.ReactNode[] {
       return;
     }
     // Bold **text**
-    const boldReplaced = line.replace(/\*\*(.*?)\*\*/g, (_, m) => `<b>${m}</b>`);
     // Bullet list
     if (line.trimStart().startsWith('• ') || line.trimStart().startsWith('- ') || line.trimStart().startsWith('* ')) {
       nodes.push(
         <div key={i} className="flex items-start gap-2 text-zinc-200 py-0.5">
           <span className="text-indigo-400 mt-0.5 shrink-0">•</span>
-          <span dangerouslySetInnerHTML={{ __html: boldReplaced.replace(/^[•\-\*]\s/, '') }} />
+          <span><InlineText text={line.replace(/^[•*-]\s/, '')} /></span>
         </div>
       );
       return;
@@ -160,8 +160,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
       return;
     }
     nodes.push(
-      <p key={i} className="text-zinc-200 leading-relaxed"
-        dangerouslySetInnerHTML={{ __html: boldReplaced }} />
+      <p key={i} className="text-zinc-200 leading-relaxed"><InlineText text={line} /></p>
     );
   });
 
@@ -173,19 +172,15 @@ export const AiCopilotPage: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([
     {
       id: 'conv-1',
-      title: 'Financial overview August',
+      title: 'Spending overview',
       createdAt: new Date(),
       messages: [
         {
           id: 'msg-0',
           role: 'assistant',
-          text: "Hello Pruthviraj! 👋 I'm your **SmartExpense AI Copilot**.\n\nI have real-time access to your transaction data, budget allocations, and cashflow trends. Ask me anything about your finances.\n\n• **Natural language queries** — no syntax required\n• **Predictive analytics** — next-month forecasts\n• **Budget optimization** — reduction strategies\n• **Report generation** — instant summaries",
+          text: "Welcome to **Spending Insights**. Ask about the expenses recorded in your workspace, such as your largest expense or spending in a category.\n\nAnswers use the application's spending rules and recorded data. Forecasts are estimates.",
           timestamp: new Date(),
-          insights: [
-            'Your dining out expenses increased 14% this week.',
-            'Projected August savings balance: $7,579.50'
-          ],
-          suggestedAction: 'Set a weekly $150 dining out threshold alert',
+          insights: [],
         },
       ],
     },
@@ -220,7 +215,10 @@ export const AiCopilotPage: React.FC = () => {
           method: 'POST',
           body: JSON.stringify({ query }),
         });
-      } catch {
+      } catch (failure) {
+        if (!isDemoMode()) {
+          return { query, answer: failure instanceof Error ? `Unable to load spending insights: ${failure.message}` : 'Unable to load spending insights. Please try again.', insights: [] };
+        }
         // Smart mock responses based on query content
         const q = query.toLowerCase();
         if (q.includes('food') || q.includes('dining') || q.includes('grocery')) {
@@ -565,7 +563,7 @@ export const AiCopilotPage: React.FC = () => {
         {/* ── AI Insight Cards (shown when few messages) ── */}
         {activeConv?.messages.length <= 2 && (
           <div className="px-6 pt-4 grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
-            {AI_INSIGHT_CARDS.map((card) => {
+            {(isDemoMode() ? AI_INSIGHT_CARDS : []).map((card) => {
               const Icon = card.icon;
               return (
                 <div

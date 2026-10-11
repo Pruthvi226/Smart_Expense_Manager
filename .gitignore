@@ -26,3 +26,15 @@ logs/
 # Env & Secrets
 .env
 *.local
+
+# Terraform state and deployment inputs
+deploy/aws/terraform/.terraform/
+deploy/aws/terraform/*.tfstate*
+deploy/aws/terraform/terraform.tfvars
+
+# Certificates and local TLS stores
+*.pem
+*.key
+*.p12
+.env.*
+!.env.example

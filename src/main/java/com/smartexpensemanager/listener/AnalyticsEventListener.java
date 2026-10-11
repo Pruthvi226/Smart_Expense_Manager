@@ -7,38 +7,38 @@ import com.smartexpensemanager.event.ExpenseCreatedEvent;
 import com.smartexpensemanager.event.ExpenseDeletedEvent;
 import com.smartexpensemanager.event.ExpenseUpdatedEvent;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.event.EventListener;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.cache.CacheManager;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 @Component
 public class AnalyticsEventListener {
 
-    public AnalyticsEventListener(RedisTemplate<String, Object> redisTemplate) {
-        this.redisTemplate = redisTemplate;
+    public AnalyticsEventListener(CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
     }
 
     private static final Logger log = LoggerFactory.getLogger(AnalyticsEventListener.class);
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final CacheManager cacheManager;
 
     @Async
-    @EventListener
+    @TransactionalEventListener
     public void handleExpenseCreated(ExpenseCreatedEvent event) {
         log.info("Analytics processing ExpenseCreatedEvent for user {}", event.getUserId());
         evictUserCache(event.getUserId());
     }
 
     @Async
-    @EventListener
+    @TransactionalEventListener
     public void handleExpenseUpdated(ExpenseUpdatedEvent event) {
         log.info("Analytics processing ExpenseUpdatedEvent for user {}", event.getUserId());
         evictUserCache(event.getUserId());
     }
 
     @Async
-    @EventListener
+    @TransactionalEventListener
     public void handleExpenseDeleted(ExpenseDeletedEvent event) {
         log.info("Analytics processing ExpenseDeletedEvent for user {}", event.getUserId());
         evictUserCache(event.getUserId());
@@ -46,8 +46,12 @@ public class AnalyticsEventListener {
 
     private void evictUserCache(Long userId) {
         try {
-            redisTemplate.delete("dashboard::" + userId);
-            redisTemplate.delete("analytics::" + userId);
+            var dashboard = cacheManager.getCache("dashboard");
+            if (dashboard != null) dashboard.evict(userId);
+            var analytics = cacheManager.getCache("analytics");
+            if (analytics != null) {
+                for (int months = 1; months <= 24; months++) analytics.evict(userId + "-" + months);
+            }
             log.info("Invalidated Redis dashboard & analytics cache for user {}", userId);
         } catch (Exception e) {
             log.warn("Failed to invalidate Redis cache: {}", e.getMessage());

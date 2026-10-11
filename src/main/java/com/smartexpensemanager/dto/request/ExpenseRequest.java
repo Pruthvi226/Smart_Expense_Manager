@@ -14,9 +14,11 @@ public class ExpenseRequest {
 
     @NotNull(message = "Amount is required")
     @Positive(message = "Amount must be greater than zero")
+    @jakarta.validation.constraints.Digits(integer = 10, fraction = 2, message = "Amount supports up to 10 integer digits and 2 decimal places")
     private BigDecimal amount;
 
     @NotBlank(message = "Category is required")
+    @Size(max = 100, message = "Category cannot exceed 100 characters")
     private String category;
 
     @Size(max = 500, message = "Description cannot exceed 500 characters")
